@@ -29,6 +29,7 @@ service cloud.firestore {
           'liabilities',
           'todos',
           'statements',
+          'budgets',
           'categories',
           'devices'
         ];
@@ -402,6 +403,55 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+
+      // --- budgets (Milestone 4) --------------------------------------------
+      //
+      // The document ID is the category, which is what makes a second budget
+      // for the same category impossible to create rather than merely
+      // discouraged. The `category` field is a readable copy of the ID, and the
+      // rules insist the two agree — otherwise a document could claim to budget
+      // `rent` while living under `groceries`, and every screen would disagree
+      // about which one it was.
+      match /budgets/{category} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'category', 'monthlyLimit', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll(['category', 'monthlyLimit', 'updatedAt']);
+        }
+
+        function hasValidFields() {
+          return data().category is string
+              && data().category == category
+              && data().monthlyLimit is number
+              // A limit of zero is not a budget, it is a ban, and nothing here
+              // could enforce one.
+              && data().monthlyLimit > 0;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        // `createdAt` is absent from an update's payload and preserved by the
+        // merge, so — unlike the other collections — it is compared only when
+        // it is actually present.
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && (!('createdAt' in data())
+                          || data().createdAt == resource.data.createdAt)
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
       // categories and devices. Each graduates to its own validated block as
@@ -421,7 +471,7 @@ service cloud.firestore {
                            && isKnownCollection(collection)
                            && !(collection in [
                                 'transactions', 'savings', 'liabilities',
-                                'todos', 'statements'
+                                'todos', 'statements', 'budgets'
                               ]);
       }
     }

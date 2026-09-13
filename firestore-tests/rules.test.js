@@ -332,6 +332,65 @@ describe('todos', () => {
   });
 });
 
+describe('budgets', () => {
+  const validBudget = (overrides = {}) => ({
+    category: 'groceries',
+    monthlyLimit: 400000,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  });
+
+  it('accepts a well-formed one', async () => {
+    await assertSucceeds(
+      setDoc(doc(owner, path('budgets', 'groceries')), validBudget()),
+    );
+  });
+
+  it('REFUSES a limit of zero', async () => {
+    // Not a budget, a ban — and nothing here could enforce one.
+    await assertFails(
+      setDoc(
+        doc(owner, path('budgets', 'rent')),
+        validBudget({ category: 'rent', monthlyLimit: 0 }),
+      ),
+    );
+  });
+
+  it('REFUSES a negative limit', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('budgets', 'health')),
+        validBudget({ category: 'health', monthlyLimit: -1 }),
+      ),
+    );
+  });
+
+  it('REFUSES a category that disagrees with the document id', async () => {
+    // Otherwise a document could claim to budget `rent` while living under
+    // `groceries`, and every screen would disagree about which one it was.
+    await assertFails(
+      setDoc(
+        doc(owner, path('budgets', 'transport')),
+        validBudget({ category: 'rent' }),
+      ),
+    );
+  });
+
+  it('REFUSES an unknown field', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('budgets', 'study')),
+        validBudget({ category: 'study', rollover: true }),
+      ),
+    );
+  });
+
+  it('allows deleting one', async () => {
+    await assertSucceeds(deleteDoc(doc(owner, path('budgets', 'groceries'))));
+  });
+});
+
 describe('savings and liabilities', () => {
   const validGoal = (overrides = {}) => ({
     name: 'New laptop',
