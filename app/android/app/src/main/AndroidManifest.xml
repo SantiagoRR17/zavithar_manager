@@ -1,4 +1,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Milestone 3 reminders. Every one of these is load-bearing; see
+         docs/adr/0011-free-tier-only.md for why the schedule lives on the
+         device at all rather than on a server.
+
+         POST_NOTIFICATIONS  - Android 13+ requires this at runtime. Without
+                               the prompt being accepted, scheduling silently
+                               succeeds and nothing is ever shown.
+         SCHEDULE_EXACT_ALARM - Android 12+ gate on alarms that fire at a
+                               precise time. Not auto-granted; the user has to
+                               allow it in system settings. If they do not, the
+                               app falls back to inexact scheduling and Doze may
+                               delay a reminder by an unpredictable amount.
+                               USE_EXACT_ALARM would be auto-granted, but it
+                               declares the app to be an alarm-clock-class app,
+                               which this is not.
+         RECEIVE_BOOT_COMPLETED - pending alarms do not survive a reboot. The
+                               plugin's boot receiver re-registers them; without
+                               this permission every reminder is lost the first
+                               time the phone restarts, which is the kind of
+                               failure nobody notices until it matters.
+         VIBRATE             - so a reminder is felt as well as seen. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:label="zavithar_manager"
         android:name="${applicationName}"

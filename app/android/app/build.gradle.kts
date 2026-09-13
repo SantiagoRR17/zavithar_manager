@@ -13,6 +13,12 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by flutter_local_notifications (Milestone 3): the plugin
+        // uses java.time APIs that do not exist below API 26, and desugaring is
+        // what back-ports them to the minSdk this app supports. Without it the
+        // build fails at checkDebugAarMetadata with the plugin naming this flag
+        // directly — an unusually honest error message.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -39,6 +45,13 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // The desugaring runtime itself. Pinned rather than floating: a silent
+    // major bump here changes which APIs are back-ported, and the failure mode
+    // is a crash on an old device that no emulator in this project would catch.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 kotlin {

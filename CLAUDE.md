@@ -29,7 +29,7 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
 | 1. Requirements & docs | Done |
 | 2. Mockups | Done (interactive HTML prototype, dark theme, red brand accent) — logo mark still **undecided**, mockups use plain text branding for now |
 | 3. Data model | Done |
-| 4. Development | **In progress** — Milestones 0, 1 and 2 done (2026-09-13): scaffolding, financial manager, todo list. Windows build still deferred. Milestone 3 (on-device reminders) next |
+| 4. Development | **In progress** — Milestones 0, 1, 2 done and 3 code-complete (2026-09-13), plus monthly statements (ADR 0012). Windows build still deferred. **Open:** a reminder has not yet been observed firing on a device |
 | 5. Testing | Plan written, not yet executed |
 | 6. Deployment | Plan written, not yet executed |
 | 7. Maintenance | Plan written, ongoing once live |
@@ -56,7 +56,13 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **Filtering and ordering happen in memory** (`TodoQuery`), not in the query — a `where` per chip needs a composite index per combination and re-reads every document on every tap.
    - **Never `orderBy` an optional field.** Firestore omits documents that lack it, so ordering todos by `deadline` would hide every undated task.
    - Shared sheet chrome, list states, `OptionalDateField` and `DataFailure` now live in `core/`, not in `features/finance/`.
-3. **Notifications** — **on-device** scheduled reminders (`flutter_local_notifications` + `zonedSchedule`), re-registered on launch and on every todo write; runtime `POST_NOTIFICATIONS` permission and `SCHEDULE_EXACT_ALARM` on Android 13+, without which Doze delays reminders unpredictably. No FCM, no Cloud Function — [ADR 0011](docs/adr/0011-free-tier-only.md). `users/{uid}/devices/{id}` existed only to hold FCM tokens and is now dead schema.
+3. **Notifications** — code-complete 2026-09-13, **not yet verified firing on a device.** On-device scheduling only (`flutter_local_notifications` + `zonedSchedule`); no FCM, no Cloud Function ([ADR 0011](docs/adr/0011-free-tier-only.md)).
+   - **A scheduling bug has no symptom** — nothing crashes, nothing is logged, the reminder just never arrives. Hence the pure `ReminderPlan` with heavy unit tests, and the Settings card that shows what *Android is actually holding* versus what the app intends.
+   - Android needs **core library desugaring** (`isCoreLibraryDesugaringEnabled`) or the build fails at `checkDebugAarMetadata`, plus `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED` and `VIBRATE` — see the manifest comments for why each one is load-bearing.
+   - **Notification IDs must be stable per todo**, or a reschedule leaves the old alarm beside the new one and the reminder fires twice.
+   - **Past reminders are dropped, never scheduled** — firing immediately would dump a week of stale reminders into the shade after a holiday.
+   - `users/{uid}/devices/{id}` is dead schema (it only ever held FCM tokens).
+
 4. **Polish** — recurring transactions, budgets, charts, editable categories, CSV export, dark mode refinements.
 
 Full task breakdown for each milestone is in `development-plan.md` in the Project.
@@ -131,6 +137,7 @@ returns `resource-exhausted` and stops the service until midnight US Pacific
 
 - Thin repository layer per Firestore collection (e.g. `TransactionsRepository`) — UI never talks to Firestore directly.
 - Every stream-backed screen has explicit loading/error states from the start.
+- **A committed write, a rejected write and one queued forever in the local cache look identical in the UI** — latency compensation renders the row in every case. `main.dart` carries an off-by-default `logFirestoreRpcs` flag; turn it on and look for `commit_time` (accepted) or `permission-denied` (rejected) when data behaves strangely.
 - **Under git since 2026-09-13**, on a public GitHub remote (`origin/main`). The repo went three sessions without version control before that — the convention was written here from the start and simply never executed, which is worth remembering as a category of mistake: a rule in a doc is not a thing that exists.
 - Commits are authored with the **GitHub noreply address, set repo-locally** (`git config --local user.email`), so the owner's real email never enters a public history. The global git identity on the machine is the real one — do not rely on it here.
 - Feature branches per milestone, small commits.

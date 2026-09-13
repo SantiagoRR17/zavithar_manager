@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../notifications/presentation/reminder_settings_card.dart';
 
 /// Account details and sign-out.
 ///
@@ -50,6 +51,8 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             children: <Widget>[
               _AccountCard(user: user),
+              const SizedBox(height: 16),
+              const ReminderSettingsCard(),
               const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () => _confirmSignOut(context, ref),
@@ -59,7 +62,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               const Center(
                 child: Text(
-                  'Zavithar Manager · Milestone 0',
+                  'Zavithar Manager · Milestone 3',
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ),
