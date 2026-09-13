@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/data_failure.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/async_states.dart';
+import '../../application/statement_providers.dart';
 import '../../application/transaction_providers.dart';
 import '../../data/transactions_repository.dart';
 import '../../domain/finance_transaction.dart';
+import '../../domain/statement_period.dart';
 import '../transaction_form_sheet.dart';
 import '../widgets/transaction_tile.dart';
 
@@ -39,6 +41,25 @@ class TransactionsTab extends ConsumerWidget {
         ),
         data: (List<FinanceTransaction> items) {
           if (items.isEmpty) {
+            // Two different empty states, because this list only shows the
+            // open period now (ADR 0012). Telling someone whose history sits
+            // in closed statements that they have "no transactions yet" is a
+            // lie, and one that reads as data loss — exactly the mistake the
+            // todos screen already guards against.
+            final StatementPeriod? lastClosed = ref.watch(
+              lastClosedPeriodProvider,
+            );
+
+            if (lastClosed != null) {
+              return AppEmptyState(
+                icon: Icons.receipt_long_outlined,
+                title: 'Nothing logged since ${lastClosed.label}',
+                message:
+                    'Everything up to ${lastClosed.label} is closed and lives '
+                    'in Statements. Tap + to log something new.',
+              );
+            }
+
             return const AppEmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'No transactions yet',
