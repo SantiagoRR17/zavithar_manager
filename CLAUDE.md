@@ -29,7 +29,7 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
 | 1. Requirements & docs | Done |
 | 2. Mockups | Done (interactive HTML prototype, dark theme, red brand accent) — logo mark still **undecided**, mockups use plain text branding for now |
 | 3. Data model | Done |
-| 4. Development | **In progress** — Milestones 0, 1, 2 done and 3 code-complete (2026-09-13), plus monthly statements (ADR 0012). Windows build still deferred. **Open:** a reminder has not yet been observed firing on a device |
+| 4. Development | Milestones 0–3 **done and verified on a device** (2026-09-13), plus monthly statements (ADR 0012) and a signed release build in daily use. Windows build still deferred |
 | 5. Testing | Plan written, not yet executed |
 | 6. Deployment | Plan written, not yet executed |
 | 7. Maintenance | Plan written, ongoing once live |
@@ -56,7 +56,7 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **Filtering and ordering happen in memory** (`TodoQuery`), not in the query — a `where` per chip needs a composite index per combination and re-reads every document on every tap.
    - **Never `orderBy` an optional field.** Firestore omits documents that lack it, so ordering todos by `deadline` would hide every undated task.
    - Shared sheet chrome, list states, `OptionalDateField` and `DataFailure` now live in `core/`, not in `features/finance/`.
-3. **Notifications** — code-complete 2026-09-13, **not yet verified firing on a device.** On-device scheduling only (`flutter_local_notifications` + `zonedSchedule`); no FCM, no Cloud Function ([ADR 0011](docs/adr/0011-free-tier-only.md)).
+3. **Notifications** — ✅ **Done and verified 2026-09-13**, reminders observed firing on a device. On-device scheduling only (`flutter_local_notifications` + `zonedSchedule`); no FCM, no Cloud Function ([ADR 0011](docs/adr/0011-free-tier-only.md)).
    - **A scheduling bug has no symptom** — nothing crashes, nothing is logged, the reminder just never arrives. Hence the pure `ReminderPlan` with heavy unit tests, and the Settings card that shows what *Android is actually holding* versus what the app intends.
    - Android needs **core library desugaring** (`isCoreLibraryDesugaringEnabled`) or the build fails at `checkDebugAarMetadata`, plus `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED` and `VIBRATE` — see the manifest comments for why each one is load-bearing.
    - **`flutter_local_notifications` v16+ no longer declares its own receivers; the app's manifest must.** Without `ScheduledNotificationReceiver`, scheduled notifications never appear and *every* diagnostic says they should: `zonedSchedule` succeeds, `pendingNotificationRequests` reports the alarm, and `dumpsys alarm` shows AlarmManager firing at the right moment — because its job ends there. The broadcast resolves to no component and dies silently, in debug and release alike, while an immediate `show()` works perfectly throughout.
