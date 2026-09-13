@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/data_failure.dart';
+import '../../../../core/widgets/async_states.dart';
 import '../../application/transaction_providers.dart';
 import '../../data/savings_repository.dart';
-import '../../data/transactions_repository.dart' show FinanceFailure;
 import '../../domain/savings_goal.dart';
 import '../savings_form_sheet.dart';
-import '../widgets/async_list_states.dart';
 import '../widgets/savings_goal_card.dart';
 
 /// The savings tab — every goal with its progress, live.
@@ -28,16 +28,17 @@ class SavingsTab extends ConsumerWidget {
       ),
       body: goals.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stackTrace) => FinanceErrorState(
+        error: (Object error, StackTrace stackTrace) => AppErrorState(
           title: 'Could not load your savings goals',
           error: error,
         ),
         data: (List<SavingsGoal> items) {
           if (items.isEmpty) {
-            return const FinanceEmptyState(
+            return const AppEmptyState(
               icon: Icons.savings_outlined,
               title: 'Nothing being saved for yet',
-              message: 'Tap + to set a target. Add to it whenever you put '
+              message:
+                  'Tap + to set a target. Add to it whenever you put '
                   'money aside, and watch the bar fill.',
             );
           }
@@ -99,7 +100,7 @@ class _SavingsList extends ConsumerWidget {
             ),
           ),
         );
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }

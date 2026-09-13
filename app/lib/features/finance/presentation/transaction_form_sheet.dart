@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../application/transaction_providers.dart';
 import '../data/transactions_repository.dart';
 import '../domain/finance_accounts.dart';
 import '../domain/finance_categories.dart';
 import '../domain/finance_transaction.dart';
 import 'widgets/amount_form_field.dart';
-import 'widgets/sheet_scaffold.dart';
 
 /// Opens the create/edit sheet. Pass [initial] to edit, omit it to create.
 ///
@@ -21,7 +22,7 @@ Future<void> showTransactionFormSheet(
   BuildContext context, {
   FinanceTransaction? initial,
 }) {
-  return showFinanceSheet(
+  return showAppSheet(
     context,
     builder: (BuildContext context) => TransactionFormSheet(initial: initial),
   );
@@ -64,8 +65,8 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
     final FinanceTransaction? initial = widget.initial;
 
     _type = initial?.type ?? TransactionType.expense;
-    _category = initial != null &&
-            FinanceCategories.isValidFor(initial.category, _type)
+    _category =
+        initial != null && FinanceCategories.isValidFor(initial.category, _type)
         ? initial.category
         : FinanceCategories.defaultFor(_type);
     // A document can hold an account this build does not offer — written by a
@@ -97,7 +98,7 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FinanceSheetBody(
+    return AppSheetBody(
       formKey: _formKey,
       title: _isEditing ? 'Edit transaction' : 'New transaction',
       error: _error,
@@ -307,7 +308,7 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
       // `mounted` because an await happened: the sheet can be dismissed while
       // the write is in flight, and using a dead BuildContext throws.
       if (mounted) Navigator.of(context).pop();
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       if (mounted) {
         setState(() {
           _error = e.message;

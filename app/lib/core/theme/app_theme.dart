@@ -134,7 +134,9 @@ abstract final class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.brandPrimaryLight),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.brandPrimaryLight,
+        ),
       ),
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,

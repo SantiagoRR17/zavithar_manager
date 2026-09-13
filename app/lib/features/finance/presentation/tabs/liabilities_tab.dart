@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/data_failure.dart';
+import '../../../../core/widgets/async_states.dart';
 import '../../application/transaction_providers.dart';
 import '../../data/liabilities_repository.dart';
-import '../../data/transactions_repository.dart' show FinanceFailure;
 import '../../domain/liability.dart';
 import '../liability_form_sheet.dart';
-import '../widgets/async_list_states.dart';
 import '../widgets/liability_card.dart';
 
 /// The debts tab — every liability, biggest first, live.
@@ -28,16 +28,15 @@ class LiabilitiesTab extends ConsumerWidget {
       ),
       body: liabilities.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stackTrace) => FinanceErrorState(
-          title: 'Could not load your debts',
-          error: error,
-        ),
+        error: (Object error, StackTrace stackTrace) =>
+            AppErrorState(title: 'Could not load your debts', error: error),
         data: (List<Liability> items) {
           if (items.isEmpty) {
-            return const FinanceEmptyState(
+            return const AppEmptyState(
               icon: Icons.credit_card_off_outlined,
               title: 'No debts recorded',
-              message: 'A good place to be. Tap + if there is a loan or card '
+              message:
+                  'A good place to be. Tap + if there is a loan or card '
                   'balance worth tracking.',
             );
           }
@@ -101,7 +100,7 @@ class _LiabilitiesList extends ConsumerWidget {
             ),
           ),
         );
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }

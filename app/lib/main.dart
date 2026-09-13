@@ -21,9 +21,7 @@ Future<void> main() async {
   // the channel Flutter uses to talk to the platform.
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Firestore keeps a local copy of everything it has seen. Reads are served
   // from it instantly, writes are queued while offline and replayed on

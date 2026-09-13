@@ -46,8 +46,7 @@ abstract final class FinanceAccounts {
   /// renders as something readable instead of blank.
   static String label(String? account) {
     if (account == null || account.isEmpty) return _labels[fallback]!;
-    return _labels[account] ??
-        account[0].toUpperCase() + account.substring(1);
+    return _labels[account] ?? account[0].toUpperCase() + account.substring(1);
   }
 
   /// Whether a stored value is one this build knows how to offer in the picker.

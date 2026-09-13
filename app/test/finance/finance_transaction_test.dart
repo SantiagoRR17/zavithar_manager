@@ -302,7 +302,9 @@ void main() {
     test('refuses an edit past the overflow guard', () {
       // 16 digits: the keystroke is rejected, so the field keeps its old value
       // rather than silently rendering an overflowed int.
-      const TextEditingValue old = TextEditingValue(text: '999.999.999.999.999');
+      const TextEditingValue old = TextEditingValue(
+        text: '999.999.999.999.999',
+      );
       final TextEditingValue result = formatter.formatEditUpdate(
         old,
         const TextEditingValue(text: '9999999999999999'),
@@ -323,7 +325,10 @@ void main() {
     final DateTime now = DateTime(2026, 8, 25, 12);
 
     test('names the days a person thinks of by name', () {
-      expect(AppDates.relativeDay(DateTime(2026, 8, 25, 23), now: now), 'Today');
+      expect(
+        AppDates.relativeDay(DateTime(2026, 8, 25, 23), now: now),
+        'Today',
+      );
       expect(
         AppDates.relativeDay(DateTime(2026, 8, 24, 1), now: now),
         'Yesterday',

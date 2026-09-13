@@ -97,12 +97,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       // its own scroll position, so switching tabs and coming back lands you
       // where you left — which a plain IndexedStack of screens would not do.
       StatefulShellRoute.indexedStack(
-        builder:
-            (
-              BuildContext context,
-              GoRouterState state,
-              StatefulNavigationShell navigationShell,
-            ) => AppShell(navigationShell: navigationShell),
+        builder: (
+          BuildContext context,
+          GoRouterState state,
+          StatefulNavigationShell navigationShell,
+        ) => AppShell(navigationShell: navigationShell),
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[

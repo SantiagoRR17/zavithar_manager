@@ -115,10 +115,7 @@ class StatTile extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   caption!,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

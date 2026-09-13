@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
+import '../../../core/widgets/app_sheet.dart';
 import '../application/transaction_providers.dart';
 import '../data/liabilities_repository.dart';
-import '../data/transactions_repository.dart' show FinanceFailure;
 import '../domain/liability.dart';
 import 'widgets/amount_form_field.dart';
-import 'widgets/sheet_scaffold.dart';
 
 /// Create or edit a liability. Pass [initial] to edit.
 Future<void> showLiabilityFormSheet(
   BuildContext context, {
   Liability? initial,
 }) {
-  return showFinanceSheet(
+  return showAppSheet(
     context,
     builder: (BuildContext context) => LiabilityFormSheet(initial: initial),
   );
@@ -85,7 +85,7 @@ class _LiabilityFormSheetState extends ConsumerState<LiabilityFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FinanceSheetBody(
+    return AppSheetBody(
       formKey: _formKey,
       title: _isEditing ? 'Edit liability' : 'New liability',
       error: _error,
@@ -102,8 +102,9 @@ class _LiabilityFormSheetState extends ConsumerState<LiabilityFormSheet> {
             labelText: 'Name',
             hintText: 'Car loan',
           ),
-          validator: (String? value) =>
-              (value == null || value.trim().isEmpty) ? 'Give it a name.' : null,
+          validator: (String? value) => (value == null || value.trim().isEmpty)
+              ? 'Give it a name.'
+              : null,
         ),
         DropdownButtonFormField<String>(
           initialValue: _type,
@@ -225,7 +226,7 @@ class _LiabilityFormSheetState extends ConsumerState<LiabilityFormSheet> {
         );
       }
       if (mounted) Navigator.of(context).pop();
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       if (mounted) {
         setState(() {
           _error = e.message;
@@ -243,7 +244,7 @@ class _LiabilityFormSheetState extends ConsumerState<LiabilityFormSheet> {
 /// whereas editing overwrites it. Doing the subtraction by hand in the editor
 /// would lose a concurrent payment made on another device.
 Future<void> showPaymentSheet(BuildContext context, Liability liability) {
-  return showFinanceSheet(
+  return showAppSheet(
     context,
     builder: (BuildContext context) => _PaymentSheet(liability: liability),
   );
@@ -287,7 +288,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   Widget build(BuildContext context) {
     final Liability liability = widget.liability;
 
-    return FinanceSheetBody(
+    return AppSheetBody(
       formKey: _formKey,
       title: 'Payment towards ${liability.name}',
       subtitle: '${Money.format(liability.remainingAmount)} still owed',
@@ -331,7 +332,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     try {
       await repository.recordPayment(widget.liability.id, amount);
       if (mounted) Navigator.of(context).pop();
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       if (mounted) {
         setState(() {
           _error = e.message;

@@ -123,8 +123,7 @@ class _DeadlineLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool overdue =
-        !complete && deadline.isBefore(DateTime.now());
+    final bool overdue = !complete && deadline.isBefore(DateTime.now());
 
     return Row(
       children: <Widget>[

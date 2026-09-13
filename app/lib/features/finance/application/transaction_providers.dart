@@ -72,7 +72,9 @@ final Provider<SavingsRepository?> savingsRepositoryProvider =
 
 final StreamProvider<List<SavingsGoal>> savingsStreamProvider =
     StreamProvider<List<SavingsGoal>>((Ref ref) {
-      final SavingsRepository? repository = ref.watch(savingsRepositoryProvider);
+      final SavingsRepository? repository = ref.watch(
+        savingsRepositoryProvider,
+      );
       if (repository == null) return const Stream<List<SavingsGoal>>.empty();
       return repository.watchAll();
     });

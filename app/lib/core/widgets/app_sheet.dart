@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// Opens a finance bottom sheet with the settings all of them need.
 ///
 /// `isScrollControlled` is the one that is not optional: without it the sheet is
 /// capped at half the screen and the keyboard covers the save button.
-Future<void> showFinanceSheet(
+Future<void> showAppSheet(
   BuildContext context, {
   required WidgetBuilder builder,
 }) {
@@ -28,8 +28,8 @@ Future<void> showFinanceSheet(
 /// the `mounted`-safe submit button are both easy to get subtly wrong, and
 /// getting them wrong in only one of three sheets is the kind of inconsistency
 /// nobody notices until it is annoying.
-class FinanceSheetBody extends StatelessWidget {
-  const FinanceSheetBody({
+class AppSheetBody extends StatelessWidget {
+  const AppSheetBody({
     required this.formKey,
     required this.title,
     required this.children,
@@ -55,7 +55,9 @@ class FinanceSheetBody extends StatelessWidget {
     return Padding(
       // `viewInsets.bottom` is the keyboard's height; padding by it lifts the
       // sheet clear instead of letting the keyboard sit on top of it.
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),

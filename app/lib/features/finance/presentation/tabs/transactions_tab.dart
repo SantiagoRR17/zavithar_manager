@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/data_failure.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/async_states.dart';
 import '../../application/transaction_providers.dart';
 import '../../data/transactions_repository.dart';
 import '../../domain/finance_transaction.dart';
 import '../transaction_form_sheet.dart';
-import '../widgets/async_list_states.dart';
 import '../widgets/transaction_tile.dart';
 
 /// The transactions tab — a live list of every money movement, newest first.
@@ -32,16 +33,17 @@ class TransactionsTab extends ConsumerWidget {
       // will not compile without them.
       body: transactions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stackTrace) => FinanceErrorState(
+        error: (Object error, StackTrace stackTrace) => AppErrorState(
           title: 'Could not load your transactions',
           error: error,
         ),
         data: (List<FinanceTransaction> items) {
           if (items.isEmpty) {
-            return const FinanceEmptyState(
+            return const AppEmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'No transactions yet',
-              message: 'Tap + to log your first one. It appears on every '
+              message:
+                  'Tap + to log your first one. It appears on every '
                   'device you are signed in on, within seconds.',
             );
           }
@@ -118,7 +120,7 @@ class _TransactionList extends ConsumerWidget {
             ),
           ),
         );
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
   }

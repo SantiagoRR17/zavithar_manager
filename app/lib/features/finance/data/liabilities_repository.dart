@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../domain/liability.dart';
-import 'transactions_repository.dart' show FinanceFailure;
 
 /// The only place in the app that touches `users/{uid}/liabilities`.
 ///
@@ -56,7 +56,7 @@ class LiabilitiesRepository {
       });
       return doc.id;
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -75,7 +75,7 @@ class LiabilitiesRepository {
         Liability.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -101,7 +101,7 @@ class LiabilitiesRepository {
         Liability.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -109,7 +109,7 @@ class LiabilitiesRepository {
     try {
       await _raw.doc(id).delete();
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -121,7 +121,7 @@ class LiabilitiesRepository {
         Liability.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 

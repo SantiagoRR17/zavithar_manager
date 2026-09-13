@@ -45,8 +45,7 @@ abstract final class Money {
 
   /// `12500` → `$12.500`. Always unsigned — amounts are stored positive and the
   /// sign is a presentation decision belonging to [formatSigned].
-  static String format(num amount) =>
-      '$_currencySymbol${grouped(amount)}';
+  static String format(num amount) => '$_currencySymbol${grouped(amount)}';
 
   /// `12500` → `12.500`. The separators without the symbol.
   ///
