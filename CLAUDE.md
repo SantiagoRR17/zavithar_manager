@@ -29,7 +29,7 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
 | 1. Requirements & docs | Done |
 | 2. Mockups | Done (interactive HTML prototype, dark theme, red brand accent) — logo mark still **undecided**, mockups use plain text branding for now |
 | 3. Data model | Done |
-| 4. Development | **In progress** — Milestone 0 done on Android (2026-08-23); Windows build deferred. Milestone 1 code-complete 2026-09-13 (transactions, savings, liabilities, dashboard tiles) — pending on-device verification |
+| 4. Development | **In progress** — Milestones 0, 1 and 2 done (2026-09-13): scaffolding, financial manager, todo list. Windows build still deferred. Milestone 3 (on-device reminders) next |
 | 5. Testing | Plan written, not yet executed |
 | 6. Deployment | Plan written, not yet executed |
 | 7. Maintenance | Plan written, ongoing once live |
@@ -48,7 +48,12 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **Rules gotcha:** Firestore OR-s all matching rules, so a collection with its own validated block must be excluded from the `match /{collection}/{docId}` catch-all in `firestore.rules`, or the wildcard waves everything through. The exclusion list already holds `transactions`, `savings`, `liabilities` — **add `todos` to it at Milestone 2.**
    - **The Firebase console bypasses security rules entirely** (admin credentials), as does the Admin SDK and any Cloud Function — a write that the console accepts proves nothing.
    - **The Rules Playground cannot test these rules either, and fails misleadingly.** All three collections require `createdAt == request.time`, which only `FieldValue.serverTimestamp()` can satisfy; the Playground's timestamps are typed by hand, so *every* simulated create/update is denied — on the timestamp, whatever else is in the payload. Testing `amount: -5` there returns "denied" and proves nothing. The Playground is only sound for checks not involving timestamps (cross-user reads, the collection allowlist). Real verification needs the **Firestore emulator + `@firebase/rules-unit-testing`**, which runs a real client SDK. See `docs/devlog/2026-09-13.md`.
-2. **Todo list** — todo CRUD, category chips, status filters, follow-up task linking. Same real-time cross-device check as Milestone 1.
+2. **Todo list** — ✅ **Done 2026-09-13.** CRUD, category + status filter chips with cross-filtered counts, follow-up linking, validated rules. See `docs/devlog/2026-09-13.md`.
+   - **`todos` is now in the rules exclusion list**, which reads `transactions`, `savings`, `liabilities`, `todos`. Every future collection with its own validated block must be added, or the catch-all waves its writes through.
+   - **`completedAt` is deliberately not pinned to `request.time`**, unlike the audit timestamps: it is written once and carried through later edits, so an equality check would reject every subsequent edit of a finished task.
+   - **Filtering and ordering happen in memory** (`TodoQuery`), not in the query — a `where` per chip needs a composite index per combination and re-reads every document on every tap.
+   - **Never `orderBy` an optional field.** Firestore omits documents that lack it, so ordering todos by `deadline` would hide every undated task.
+   - Shared sheet chrome, list states, `OptionalDateField` and `DataFailure` now live in `core/`, not in `features/finance/`.
 3. **Notifications** — **on-device** scheduled reminders (`flutter_local_notifications` + `zonedSchedule`), re-registered on launch and on every todo write; runtime `POST_NOTIFICATIONS` permission and `SCHEDULE_EXACT_ALARM` on Android 13+, without which Doze delays reminders unpredictably. No FCM, no Cloud Function — [ADR 0011](docs/adr/0011-free-tier-only.md). `users/{uid}/devices/{id}` existed only to hold FCM tokens and is now dead schema.
 4. **Polish** — recurring transactions, budgets, charts, editable categories, CSV export, dark mode refinements.
 
