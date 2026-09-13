@@ -59,10 +59,6 @@ final Provider<void> reminderSyncProvider = Provider<void>((Ref ref) {
 });
 
 /// Whether notifications are permitted and whether alarms can be exact.
-///
-/// Both are asked of the platform rather than remembered, because either can be
-/// revoked from system settings while the app is running, and a cached "granted"
-/// would then be a lie that explains nothing when reminders stop arriving.
 @immutable
 class NotificationStatus {
   const NotificationStatus({required this.allowed, required this.exact});
@@ -75,13 +71,23 @@ class NotificationStatus {
   bool get degraded => allowed && !exact;
 }
 
+/// The current permission state, read from the platform on every evaluation.
+///
+/// Asked rather than remembered: either permission can be revoked from system
+/// settings while the app is running, and a cached "granted" would then be a
+/// lie that explains nothing when reminders stop arriving.
+///
+/// **This provider only ever queries.** An earlier version called
+/// `requestPermission()` here, so merely opening Settings to *see* whether
+/// reminders worked popped a system dialog demanding an answer. Asking is a
+/// user action; it belongs behind a button, not behind a read.
 final FutureProvider<NotificationStatus> notificationStatusProvider =
     FutureProvider<NotificationStatus>((Ref ref) async {
       final NotificationService service = ref.watch(
         notificationServiceProvider,
       );
       return NotificationStatus(
-        allowed: await service.requestPermission(),
+        allowed: await service.isPermitted(),
         exact: await service.canScheduleExact(),
       );
     });

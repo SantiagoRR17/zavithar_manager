@@ -106,7 +106,15 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
                       ? AppColors.statusGood
                       : AppColors.statusWarning,
                 ),
-                if (!s.exact) ...<Widget>[
+                if (!s.allowed) ...<Widget>[
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: _requestPermission,
+                    icon: const Icon(Icons.notifications_active, size: 18),
+                    label: const Text('Allow notifications'),
+                  ),
+                ],
+                if (s.allowed && !s.exact) ...<Widget>[
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _openExactAlarmSettings,
@@ -169,6 +177,11 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _requestPermission() async {
+    await ref.read(notificationServiceProvider).requestPermission();
+    ref.invalidate(notificationStatusProvider);
   }
 
   Future<void> _openExactAlarmSettings() async {

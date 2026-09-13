@@ -62,7 +62,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               const Center(
                 child: Text(
-                  'Zavithar Manager · Milestone 0',
+                  'Zavithar Manager · Milestone 3',
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ),

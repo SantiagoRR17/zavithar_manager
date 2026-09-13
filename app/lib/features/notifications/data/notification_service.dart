@@ -81,6 +81,17 @@ class NotificationService {
         AndroidFlutterLocalNotificationsPlugin
       >();
 
+  /// Whether notifications are currently permitted. **Asks nothing** — this is
+  /// the query, and [requestPermission] is the action.
+  ///
+  /// Keeping them apart matters more than it looks. Merging them means that
+  /// merely *reading* the status pops a system dialog, so opening a settings
+  /// screen to see whether reminders work would demand an answer instead of
+  /// giving one.
+  Future<bool> isPermitted() async {
+    return await _android?.areNotificationsEnabled() ?? false;
+  }
+
   /// Asks for the runtime notification permission (Android 13+).
   ///
   /// Returns false if the user declines. Worth handling rather than ignoring:
