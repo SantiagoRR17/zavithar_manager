@@ -218,10 +218,85 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+
+      // --- todos (Milestone 2) ---------------------------------------------
+      match /todos/{todoId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'title', 'notes', 'category', 'status',
+            'deadline', 'reminderAt', 'followUpOf', 'priority',
+            'createdAt', 'updatedAt', 'completedAt'
+          ])
+          && data().keys().hasAll([
+            'title', 'category', 'status', 'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().title is string
+              && data().title.size() >= 1
+              && data().title.size() <= 120
+              && data().category is string
+              && data().category.size() >= 1
+              && data().category.size() <= 40
+              && data().status in ['pending', 'in_progress', 'completed']
+              // Optional throughout: absent is fine, present-but-wrong is not.
+              && (!('notes' in data())
+                  || (data().notes is string && data().notes.size() <= 1000))
+              && (!('deadline' in data()) || data().deadline is timestamp)
+              && (!('reminderAt' in data()) || data().reminderAt is timestamp)
+              && (!('priority' in data())
+                  || data().priority in ['low', 'medium', 'high'])
+              // A task that follows up on itself is a cycle of one. Cheap to
+              // forbid here; awkward to unpick in the UI afterwards.
+              && (!('followUpOf' in data())
+                  || (data().followUpOf is string
+                      && data().followUpOf.size() >= 1
+                      && data().followUpOf.size() <= 64
+                      && data().followUpOf != todoId));
+        }
+
+        // `completedAt` is deliberately NOT pinned to request.time, unlike the
+        // audit timestamps. It is written once when a task is completed and
+        // then carried unchanged through every later edit — an update that
+        // merely fixes a typo re-sends the document with the original value,
+        // and `== request.time` would reject it. Type is enforced; the exact
+        // instant is not worth breaking every edit of a finished task over.
+        function hasValidCompletedAt() {
+          return !('completedAt' in data()) || data().completedAt is timestamp;
+        }
+
+        // `priority` is not in `hasAll` even though the app always writes it.
+        // The rules stay one step looser than the client on purpose: a document
+        // written before the field existed must not become unwritable.
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && hasValidCompletedAt()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && hasValidCompletedAt()
+                      && data().createdAt == resource.data.createdAt
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
-      // todos, categories, devices. Each graduates to its own validated block
-      // as its milestone lands.
+      // categories and devices. Each graduates to its own validated block as
+      // its milestone lands — though `devices` may never, since ADR 0011
+      // removed the Cloud Function that was going to read the FCM tokens it
+      // held, leaving it dead schema.
       //
       // **The exclusion list is load-bearing.** This wildcard also matches
       // `transactions/{id}`, `savings/{id}` and `liabilities/{id}`, and
@@ -230,12 +305,12 @@ service cloud.firestore {
       // `!=` clauses, the strict blocks above would enforce nothing at all
       // while looking completely correct in this file.
       //
-      // Milestone 2: add 'todos' here when it gets its own block.
       match /{collection}/{docId} {
         allow read, write: if isOwner()
                            && isKnownCollection(collection)
                            && !(collection in [
-                                'transactions', 'savings', 'liabilities'
+                                'transactions', 'savings', 'liabilities',
+                                'todos'
                               ]);
       }
     }

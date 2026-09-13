@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
 import '../../../core/widgets/app_sheet.dart';
+import '../../../core/widgets/optional_date_field.dart';
 import '../application/transaction_providers.dart';
 import '../data/liabilities_repository.dart';
 import '../domain/liability.dart';
