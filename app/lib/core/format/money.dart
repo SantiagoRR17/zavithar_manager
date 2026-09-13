@@ -171,10 +171,16 @@ abstract final class AppDates {
   static const String _locale = 'en_US';
 
   static final DateFormat _short = DateFormat('d MMM yyyy', _locale);
+  static final DateFormat _monthYear = DateFormat('MMMM yyyy', _locale);
   static final DateFormat _dayAndMonth = DateFormat('d MMM', _locale);
 
   /// `25 Aug 2026`.
   static String short(DateTime date) => _short.format(date);
+
+  /// `September 2026`. Used for the dashboard's this-month heading, which has
+  /// to name the month it is totalling — an unlabelled "income this month" is
+  /// ambiguous for exactly as long as it takes to cross a month boundary.
+  static String monthYear(DateTime date) => _monthYear.format(date);
 
   /// `Today` / `Yesterday` / `25 Aug` / `25 Aug 2026` for another year.
   ///
