@@ -57,7 +57,7 @@ A dashboard/summary view (net worth, monthly spend vs income, savings progress) 
 - `platform` ("android" | "desktop") — required
 - `lastSeenAt` (timestamp)
 
-A scheduled Cloud Function periodically scans `todos` for upcoming `reminderAt`/`deadline` values and sends FCM pushes to all tokens under `devices`.
+~~A scheduled Cloud Function periodically scans `todos` for upcoming `reminderAt`/`deadline` values and sends FCM pushes to all tokens under `devices`.~~ **Superseded by [ADR 0011](../docs/adr/0011-free-tier-only.md):** Cloud Functions need the Blaze plan and the app must stay free. Each device schedules its own local notifications from the `reminderAt` values Firestore already synced to it, so `devices` (and the FCM tokens it held) is dead schema.
 
 ## Validation strategy
 

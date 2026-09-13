@@ -18,8 +18,8 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
 - **Backend:** Firebase
   - **Cloud Firestore** — real-time database, source of truth, offline-cache enabled.
   - **Firebase Auth** — Google sign-in (primary) and email/password (fallback), both free on the Spark plan.
-  - **Firebase Cloud Messaging (FCM)** — push notifications for todo reminders.
-  - **Cloud Functions** — scheduled job that scans todos for due reminders and sends FCM pushes (this is what requires the app to notify even when closed).
+  - ~~**Firebase Cloud Messaging (FCM)**~~ — **dropped with the Cloud Functions** (ADR 0011). With no server sending, there is nothing to receive; `firebase_messaging` is not a dependency.
+  - ~~**Cloud Functions**~~ — **removed, [ADR 0011](docs/adr/0011-free-tier-only.md).** They require the Blaze plan, and the app must stay free. Todo reminders are **on-device scheduled notifications** (`flutter_local_notifications` + `zonedSchedule`) instead: one user, and every device already has the `reminderAt` values Firestore synced to it, so there is nothing for a server to re-derive.
 - **Data scoping:** everything lives under `users/{uid}/...` in Firestore; security rules check `request.auth.uid == uid`.
 
 ## Current status
@@ -49,7 +49,7 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **The Firebase console bypasses security rules entirely** (admin credentials), as does the Admin SDK and any Cloud Function — a write that the console accepts proves nothing.
    - **The Rules Playground cannot test these rules either, and fails misleadingly.** All three collections require `createdAt == request.time`, which only `FieldValue.serverTimestamp()` can satisfy; the Playground's timestamps are typed by hand, so *every* simulated create/update is denied — on the timestamp, whatever else is in the payload. Testing `amount: -5` there returns "denied" and proves nothing. The Playground is only sound for checks not involving timestamps (cross-user reads, the collection allowlist). Real verification needs the **Firestore emulator + `@firebase/rules-unit-testing`**, which runs a real client SDK. See `docs/devlog/2026-09-13.md`.
 2. **Todo list** — todo CRUD, category chips, status filters, follow-up task linking. Same real-time cross-device check as Milestone 1.
-3. **Notifications** — FCM token registration per device, scheduled Cloud Function for reminders, foreground + background notification handling.
+3. **Notifications** — **on-device** scheduled reminders (`flutter_local_notifications` + `zonedSchedule`), re-registered on launch and on every todo write; runtime `POST_NOTIFICATIONS` permission and `SCHEDULE_EXACT_ALARM` on Android 13+, without which Doze delays reminders unpredictably. No FCM, no Cloud Function — [ADR 0011](docs/adr/0011-free-tier-only.md). `users/{uid}/devices/{id}` existed only to hold FCM tokens and is now dead schema.
 4. **Polish** — recurring transactions, budgets, charts, editable categories, CSV export, dark mode refinements.
 
 Full task breakdown for each milestone is in `development-plan.md` in the Project.
@@ -97,6 +97,20 @@ status — critical:    #e66767
 Status colors always pair with an icon or text label, never color alone. Category colors follow a fixed order — don't reassign or cycle them.
 
 **Logo:** not decided yet. Several directions were explored (geometric badge, abstract sync/growth/gem symbols, hand-drawn "meteor crack" and "rune blade" Z letterforms) and none landed. Current mockups use a plain text wordmark. Revisit when there's appetite to iterate again — don't block development on it.
+
+## Hard constraint: the app must never cost money
+
+**No paid tier, under any circumstance** — not "keep it cheap", free. Firestore,
+Auth and Hosting are free on Spark, and Spark's failure mode is the right one:
+exceeding quota **stops the service for the day, it never bills**.
+
+What this forbids: **Cloud Functions and the Blaze plan** (a payment method on
+file is not free, however small the bill would be), and **Cloud Storage**, which
+is Blaze-gated for new projects. See [ADR 0011](docs/adr/0011-free-tier-only.md).
+
+The rule to apply when a feature seems to need a server — scheduled work,
+webhooks, server-side aggregation, anything that must run while no device is
+awake: **it happens on a device, or it does not happen.**
 
 ## Engineering conventions
 
