@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "194239310855-0gr93kpekb7gbcg3c5n97hufkjs9dfsl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zavithar.zavithar_manager",
+            "certificate_hash": "ebadedf173a0a0d01d13fbd160ff231f828f27ac"
+          }
+        },
+        {
           "client_id": "194239310855-hbjk9od9l94som48fc8b5ifs3so5jbaa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
