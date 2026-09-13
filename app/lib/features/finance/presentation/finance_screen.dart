@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import 'tabs/liabilities_tab.dart';
 import 'tabs/savings_tab.dart';
+import 'tabs/statements_tab.dart';
 import 'tabs/transactions_tab.dart';
 
-/// The finance area: transactions, savings goals and liabilities.
+/// The finance area: transactions, savings goals, liabilities and the
+/// monthly statements that keep the first of those affordable.
 ///
-/// Three Firestore collections, three tabs, one screen. Each tab is backed by
+/// Four Firestore collections, four tabs, one screen. Each tab is backed by
 /// its own live stream — a write from any device (or from the Firebase console)
 /// arrives as a new snapshot and rebuilds only the tab that cares. Nothing here
 /// fetches, and there is no refresh gesture anywhere because there is nothing
@@ -24,11 +26,16 @@ class FinanceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Finance'),
           bottom: const TabBar(
+            // Scrollable because four labels no longer fit across a phone —
+            // fixed tabs would shrink "Transactions" and "Statements" until
+            // they truncated.
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             // The brand red marks the active tab, matching the nav bar.
             indicatorColor: AppColors.brandPrimary,
             labelColor: AppColors.textPrimary,
@@ -37,6 +44,7 @@ class FinanceScreen extends ConsumerWidget {
               Tab(text: 'Transactions'),
               Tab(text: 'Savings'),
               Tab(text: 'Debts'),
+              Tab(text: 'Statements'),
             ],
           ),
         ),
@@ -44,7 +52,12 @@ class FinanceScreen extends ConsumerWidget {
         // each — a transaction, a goal, a debt. A single shared button would
         // have to guess.
         body: const TabBarView(
-          children: <Widget>[TransactionsTab(), SavingsTab(), LiabilitiesTab()],
+          children: <Widget>[
+            TransactionsTab(),
+            SavingsTab(),
+            LiabilitiesTab(),
+            StatementsTab(),
+          ],
         ),
       ),
     );

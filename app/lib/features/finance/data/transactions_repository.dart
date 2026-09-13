@@ -71,8 +71,33 @@ class TransactionsRepository {
   /// `includeMetadataChanges` is left off: it would re-emit each snapshot a
   /// second time purely to flip `hasPendingWrites`, doubling rebuilds for
   /// information this screen does not show.
-  Stream<List<FinanceTransaction>> watchAll() {
-    return _collection
+  ///
+  /// ## [since] is what keeps this affordable forever
+  ///
+  /// Pass the start of the open period — the day after the last closed month —
+  /// and everything older stops being read. Firestore bills only for documents
+  /// a query *returns*, so a ledger with ten years of history costs the same as
+  /// one with a month of it.
+  ///
+  /// That matters because this collection is the only one that grows without
+  /// bound: unfiltered, a cold start would be reading ~18,000 documents by year
+  /// five, which is 36% of the free tier's daily quota in one launch. See
+  /// [ADR 0012](../../../../docs/adr/0012-monthly-statements.md).
+  ///
+  /// Null means no lower bound — the state before any month has been closed.
+  ///
+  /// A range filter and an `orderBy` on the **same** field need no composite
+  /// index, which is why this one still costs nothing to deploy.
+  Stream<List<FinanceTransaction>> watchAll({DateTime? since}) {
+    Query<FinanceTransaction> query = _collection;
+    if (since != null) {
+      query = query.where(
+        FinanceTransaction.fieldDate,
+        isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+      );
+    }
+
+    return query
         .orderBy(FinanceTransaction.fieldDate, descending: true)
         .snapshots()
         .map(

@@ -5,6 +5,7 @@ import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_sheet.dart';
+import '../application/statement_providers.dart';
 import '../application/transaction_providers.dart';
 import '../data/transactions_repository.dart';
 import '../domain/finance_accounts.dart';
@@ -200,13 +201,20 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
   }
 
   Widget _dateField() {
+    final DateTime? openFrom = ref.watch(openPeriodStartProvider);
+
     return InkWell(
       onTap: _pickDate,
       borderRadius: BorderRadius.circular(8),
       child: InputDecorator(
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           labelText: 'Date',
-          suffixIcon: Icon(Icons.calendar_today, size: 18),
+          suffixIcon: const Icon(Icons.calendar_today, size: 18),
+          // Explains the greyed-out dates in the picker. Without it the floor
+          // looks like a bug rather than a closed month.
+          helperText: openFrom == null
+              ? null
+              : 'Months before ${AppDates.short(openFrom)} are closed',
         ),
         child: Text(
           AppDates.short(_date),
@@ -234,12 +242,21 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
 
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
+
+    // **Backdating stops at the last closed month** (ADR 0012). A transaction
+    // dated inside a closed period would sit before the streamed window and
+    // outside the statement meant to account for it, and would disappear from
+    // the balance without any error at all. The security rules reject such a
+    // write; this is the half that means the date is never offered in the
+    // first place, so the rule never has to fire.
+    final DateTime? openFrom = ref.watch(openPeriodStartProvider);
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _date,
-      // A transaction can be backdated freely but not logged in the future —
-      // money that has not moved yet is a budget, which is Milestone 4.
-      firstDate: DateTime(now.year - 5),
+      initialDate: _date.isBefore(openFrom ?? _date) ? openFrom! : _date,
+      // Otherwise a transaction can be backdated freely, but not logged in the
+      // future — money that has not moved yet is a budget, which is Milestone 4.
+      firstDate: openFrom ?? DateTime(now.year - 5),
       lastDate: now,
     );
     if (picked != null) {
