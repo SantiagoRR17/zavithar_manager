@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/notifications/application/notification_providers.dart';
 import 'firebase_options.dart';
 
 /// Entry point.
@@ -16,6 +17,8 @@ import 'firebase_options.dart';
 ///   2. Firestore's offline cache is switched on, which is what satisfies the
 ///      "app keeps working offline and reconciles later" requirement (FR-18,
 ///      NFR-3).
+///   3. The notification service is initialised, which loads the time-zone
+///      database that `zonedSchedule` needs (Milestone 3, ADR 0011).
 Future<void> main() async {
   // Required before any plugin call that happens before `runApp` — it wires up
   // the channel Flutter uses to talk to the platform.
@@ -34,7 +37,22 @@ Future<void> main() async {
 
   // ProviderScope is where Riverpod stores every provider's state. It has to
   // sit above anything that reads a provider, so it wraps the whole app.
-  runApp(const ProviderScope(child: ZavitharManagerApp()));
+  //
+  // The container is built here rather than letting `ProviderScope` make its
+  // own, so that the notification service can be initialised *before* the first
+  // frame. Scheduling an alarm needs the time-zone database loaded, and a
+  // reminder registered against an uninitialised `tz` throws rather than
+  // firing late — a failure with no symptom until the moment it was meant to
+  // go off.
+  final ProviderContainer container = ProviderContainer();
+  await container.read(notificationServiceProvider).initialize();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const ZavitharManagerApp(),
+    ),
+  );
 }
 
 class ZavitharManagerApp extends ConsumerWidget {
@@ -43,6 +61,12 @@ class ZavitharManagerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final GoRouter router = ref.watch(routerProvider);
+
+    // Keeps Android's alarms in step with the todos, for the whole life of the
+    // app rather than only while the Todos tab is on screen. See
+    // `reminderSyncProvider` for why that distinction matters on a two-device
+    // app.
+    ref.watch(reminderSyncProvider);
 
     // `.router` rather than the plain constructor: it hands navigation over to
     // go_router, so the auth-gate redirect in `app_router.dart` runs for every
