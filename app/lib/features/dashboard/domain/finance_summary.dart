@@ -60,6 +60,13 @@ class FinanceSummary {
   ///
   /// Signed, and legitimately negative — a month of expenses entered before the
   /// salary that covers them is an ordinary state, not an error.
+  ///
+  /// Since [ADR 0012](../../../../docs/adr/0012-monthly-statements.md) it is
+  /// assembled from two halves: the net of every **closed month's statement**,
+  /// plus the net of the transactions in the still-open period. Both halves
+  /// stay live. The transactions of closed months are never read — which is the
+  /// whole point, and why this number is as cheap to compute in year ten as in
+  /// year one.
   final num balance;
 
   /// Income and expense for the current calendar month, kept apart rather than
@@ -84,7 +91,13 @@ class FinanceSummary {
 
   /// True when there is nothing recorded anywhere — the signal for the
   /// dashboard to show an invitation instead of a grid of zeroes.
-  bool get isEmpty => transactionCount == 0 && goalCount == 0 && debtCount == 0;
+  ///
+  /// A non-zero [balance] counts as "something". Without that clause, a user
+  /// whose whole history sits in closed statements would be shown the
+  /// new-account invitation on the first of every month, right after closing
+  /// the previous one.
+  bool get isEmpty =>
+      transactionCount == 0 && goalCount == 0 && debtCount == 0 && balance == 0;
 
   /// This month's income minus this month's expense. Signed.
   num get monthNet => monthIncome - monthExpense;
@@ -122,6 +135,10 @@ class FinanceSummary {
     required List<FinanceTransaction> transactions,
     required List<SavingsGoal> savings,
     required List<Liability> liabilities,
+    // The net carried in from every closed month (ADR 0012). Zero before the
+    // first close, which is why it defaults rather than being required — a
+    // caller with no statements is not a caller with a bug.
+    num openingBalance = 0,
     DateTime? now,
   }) {
     final DateTime reference = now ?? DateTime.now();
@@ -162,7 +179,7 @@ class FinanceSummary {
     }
 
     return FinanceSummary(
-      balance: income - expense,
+      balance: openingBalance + income - expense,
       monthIncome: monthIncome,
       monthExpense: monthExpense,
       savedTotal: savedTotal,

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../finance/application/statement_providers.dart';
 import '../../finance/application/transaction_providers.dart';
 import '../../finance/domain/finance_transaction.dart';
 import '../../finance/domain/liability.dart';
@@ -75,6 +76,11 @@ final Provider<AsyncValue<FinanceSummary>> financeSummaryProvider =
           transactions: transactions.requireValue,
           savings: savings.requireValue,
           liabilities: liabilities.requireValue,
+          // The closed months' net. The transactions stream only carries the
+          // open period now (ADR 0012), so without this the balance would
+          // silently reset to zero the moment a month was closed — the most
+          // alarming possible way for a cost optimisation to go wrong.
+          openingBalance: ref.watch(closedBalanceProvider),
         ),
       );
     });

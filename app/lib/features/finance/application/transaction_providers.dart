@@ -8,6 +8,7 @@ import '../data/transactions_repository.dart';
 import '../domain/finance_transaction.dart';
 import '../domain/liability.dart';
 import '../domain/savings_goal.dart';
+import 'statement_providers.dart';
 
 /// Riverpod providers for the finance feature — the bridge between
 /// `TransactionsRepository` (which knows Firestore) and the widgets (which must
@@ -45,6 +46,16 @@ final Provider<TransactionsRepository?> transactionsRepositoryProvider =
 /// this any more, so navigating away from the Finance tab stops the reads. That
 /// matters for NFR-5: Firestore bills per document read, and a listener left
 /// open on a collection is a slow leak of the free tier.
+///
+/// **Scoped to the open period** — everything since the last closed month
+/// (ADR 0012). This is the provider that keeps a ten-year ledger as cheap to
+/// open as a one-month one.
+///
+/// It waits for the statements to load before opening a listener. Guessing a
+/// boundary and correcting it later would mean reading the whole collection
+/// once on every cold start — exactly the cost the boundary exists to avoid —
+/// so the extra moment spent loading a dozen statement documents pays for
+/// itself immediately.
 final StreamProvider<List<FinanceTransaction>> transactionsStreamProvider =
     StreamProvider<List<FinanceTransaction>>((Ref ref) {
       final TransactionsRepository? repository = ref.watch(
@@ -53,7 +64,14 @@ final StreamProvider<List<FinanceTransaction>> transactionsStreamProvider =
       if (repository == null) {
         return const Stream<List<FinanceTransaction>>.empty();
       }
-      return repository.watchAll();
+
+      // An empty stream never emits, so this provider stays in its loading
+      // state until the statements resolve and it is rebuilt with a boundary.
+      if (!ref.watch(statementsStreamProvider).hasValue) {
+        return const Stream<List<FinanceTransaction>>.empty();
+      }
+
+      return repository.watchAll(since: ref.watch(openPeriodStartProvider));
     });
 
 // --- Savings goals ---------------------------------------------------------

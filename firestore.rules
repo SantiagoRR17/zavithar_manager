@@ -28,6 +28,7 @@ service cloud.firestore {
           'savings',
           'liabilities',
           'todos',
+          'statements',
           'categories',
           'devices'
         ];
@@ -86,6 +87,33 @@ service cloud.firestore {
                       && data().account.size() <= 40));
         }
 
+        // The document ID of the statement a given instant belongs to:
+        // 2026-09. Zero-padded by hand because rules have no string
+        // formatting, and `2026-9` would not match the ID the app writes.
+        function periodIdOf(ts) {
+          return string(ts.year()) + '-'
+               + (ts.month() < 10 ? '0' + string(ts.month())
+                                  : string(ts.month()));
+        }
+
+        // **The backdating guard** (ADR 0012). Once a month is closed, its
+        // transactions are no longer streamed — the app reads only the open
+        // period. A transaction written *into* a closed month would therefore
+        // sit outside both the stream and the statement that is supposed to
+        // account for it, and would vanish from the balance completely. Not
+        // with an error: silently.
+        //
+        // The client already refuses such a date. This is the layer that
+        // matters, because the API key is public (ADR 0008) and the rules are
+        // the only real enforcement.
+        //
+        // `exists()` costs one document read per transaction write. At this
+        // app's write volume that is a rounding error, and it buys the one
+        // check that stops money disappearing.
+        function notInAClosedMonth() {
+          return !exists(/databases/$(database)/documents/users/$(userId)/statements/$(periodIdOf(data().date)));
+        }
+
         // Audit timestamps must be the *server's* clock, not the client's.
         // `request.time` is set by Firestore when the write arrives, and
         // `FieldValue.serverTimestamp()` resolves to exactly it — so this
@@ -106,12 +134,18 @@ service cloud.firestore {
         allow create: if isOwner()
                       && hasOnlyKnownKeys()
                       && hasValidFields()
-                      && hasServerTimestamps();
+                      && hasServerTimestamps()
+                      && notInAClosedMonth();
         allow update: if isOwner()
                       && hasOnlyKnownKeys()
                       && hasValidFields()
                       && keepsCreatedAt()
-                      && data().updatedAt == request.time;
+                      && data().updatedAt == request.time
+                      && notInAClosedMonth();
+        // Deleting out of a closed month is left allowed. Unlike a write it
+        // cannot make money appear from nowhere, and forbidding it would
+        // strand a bad row with no way to remove it short of reopening the
+        // month — which `verify` would flag anyway.
         allow delete: if isOwner();
       }
 
@@ -291,6 +325,83 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+
+      // --- statements (ADR 0012) -------------------------------------------
+      //
+      // A closed month, summarised. The document ID is the period: `2026-09`.
+      //
+      // **Create and delete only — never update.** A statement is a record,
+      // and records do not quietly change. Correcting a month means reopening
+      // it (deleting the statement, which brings its transactions back into
+      // the streamed window) and closing it again. Immutability is enforced
+      // here rather than trusted to the repository, which is the whole reason
+      // the rules exist.
+      match /statements/{periodId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'periodStart', 'periodEnd',
+            'totalIncome', 'totalExpense',
+            'openingBalance', 'closingBalance',
+            'transactionCount',
+            'incomeByCategory', 'expenseByCategory',
+            'closedAt'
+          ])
+          && data().keys().hasAll([
+            'periodStart', 'periodEnd',
+            'totalIncome', 'totalExpense',
+            'openingBalance', 'closingBalance',
+            'transactionCount', 'closedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().periodStart is timestamp
+              && data().periodEnd is timestamp
+              && data().periodStart < data().periodEnd
+              // Totals are sums of positive amounts, so neither can be
+              // negative — the sign lives in `type` on the transactions.
+              && data().totalIncome is number
+              && data().totalIncome >= 0
+              && data().totalExpense is number
+              && data().totalExpense >= 0
+              // Balances carry forward and may legitimately be negative.
+              && data().openingBalance is number
+              && data().closingBalance is number
+              && data().transactionCount is int
+              && data().transactionCount >= 0
+              && (!('incomeByCategory' in data())
+                  || data().incomeByCategory is map)
+              && (!('expenseByCategory' in data())
+                  || data().expenseByCategory is map);
+        }
+
+        // The statement has to add up. This is the one rule here that checks
+        // *arithmetic* rather than shape, and it is worth the line: a
+        // statement whose closing balance does not follow from its own opening
+        // balance and totals is not a summary of anything, and every later
+        // balance is built on top of it.
+        function balancesReconcile() {
+          return data().closingBalance ==
+                 data().openingBalance + data().totalIncome - data().totalExpense;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && balancesReconcile()
+                      && data().closedAt == request.time;
+        // No `allow update` at all. Firestore denies by default, so the
+        // absence *is* the rule — stated here in a comment because an absent
+        // rule is easy to mistake for an oversight.
+        allow delete: if isOwner();
+      }
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
       // categories and devices. Each graduates to its own validated block as
@@ -310,7 +421,7 @@ service cloud.firestore {
                            && isKnownCollection(collection)
                            && !(collection in [
                                 'transactions', 'savings', 'liabilities',
-                                'todos'
+                                'todos', 'statements'
                               ]);
       }
     }
