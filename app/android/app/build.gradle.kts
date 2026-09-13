@@ -73,6 +73,14 @@ android {
 
     buildTypes {
         release {
+            // Appended to Flutter's own rules. Without proguard-rules.pro,
+            // scheduled notifications are silently lost in release builds —
+            // see the file for the full story.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {

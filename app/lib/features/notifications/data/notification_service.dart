@@ -22,8 +22,21 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
 
   bool _ready = false;
-  bool _initialising = false;
   bool _failed = false;
+
+  /// The in-flight initialisation, shared by everyone who asks for it.
+  ///
+  /// **Not a boolean flag.** A flag was the first attempt and it dropped
+  /// reminders: at startup `sync` runs once with an empty plan while the todos
+  /// are still loading, which begins initialising; moments later the todos
+  /// arrive and `sync` runs again — this time carrying an actual reminder — and
+  /// a "already initialising, give up" flag turned that second call into a
+  /// no-op. Nothing retried afterwards, so the reminder was silently never
+  /// scheduled. The app said it had one queued and Android held none.
+  ///
+  /// Holding the Future instead means a concurrent caller *waits for the same
+  /// initialisation* and then carries on, rather than being turned away.
+  Future<bool>? _initialisation;
 
   /// Android needs a channel before anything can be posted on API 26+.
   ///
@@ -41,13 +54,6 @@ class NotificationService {
     importance: Importance.high,
   );
 
-  /// Sets up time zones and the channel. Safe to call more than once.
-  ///
-  /// **The time zone database is the part that is easy to skip and fatal.**
-  /// `zonedSchedule` takes a `TZDateTime`, and without `initializeTimeZones` the
-  /// `tz` package has no locations at all, so building one throws. Setting the
-  /// *local* location matters just as much: left at the default UTC, a reminder
-  /// for 09:00 in Bogotá would fire at 04:00.
   /// Initialises if it has not been, and reports whether it worked.
   ///
   /// **Nothing may await this before the first frame.** An earlier version was
@@ -58,10 +64,15 @@ class NotificationService {
   /// open, and nothing optional should ever be able to hold the UI hostage.
   Future<bool> ensureInitialized({
     DidReceiveNotificationResponseCallback? onTap,
+  }) {
+    if (_ready) return Future<bool>.value(true);
+    if (_failed) return Future<bool>.value(false);
+    return _initialisation ??= _initialiseOnce(onTap: onTap);
+  }
+
+  Future<bool> _initialiseOnce({
+    DidReceiveNotificationResponseCallback? onTap,
   }) async {
-    if (_ready) return true;
-    if (_failed || _initialising) return false;
-    _initialising = true;
     try {
       await initialize(onTap: onTap);
       return _ready;
@@ -72,11 +83,16 @@ class NotificationService {
       debugPrint('Notifications unavailable: $error');
       debugPrint('$stack');
       return false;
-    } finally {
-      _initialising = false;
     }
   }
 
+  /// Sets up time zones and the channel. Safe to call more than once.
+  ///
+  /// **The time zone database is the part that is easy to skip and fatal.**
+  /// `zonedSchedule` takes a `TZDateTime`, and without `initializeTimeZones` the
+  /// `tz` package has no locations at all, so building one throws. Setting the
+  /// *local* location matters just as much: left at the default UTC, a reminder
+  /// for 09:00 in Bogotá would fire at 04:00.
   Future<void> initialize({
     DidReceiveNotificationResponseCallback? onTap,
   }) async {
@@ -171,6 +187,10 @@ class NotificationService {
         .toSet();
 
     for (final PendingNotificationRequest p in pending) {
+      // The test reminder is not in any plan, so an unqualified diff would
+      // cancel it the moment anything else changed — which on a busy list is
+      // well before it had a chance to fire.
+      if (p.id == testReminderId) continue;
       if (!wanted.contains(p.id)) {
         await _plugin.cancel(id: p.id);
       }
@@ -210,6 +230,37 @@ class NotificationService {
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle,
     );
+  }
+
+  /// Reserved id for [scheduleTest], outside anything `notificationIdFor`
+  /// can produce for a real todo.
+  static const int testReminderId = 2147483646;
+
+  /// Schedules one real alarm, shortly from now.
+  ///
+  /// Goes through `zonedSchedule` exactly like a todo reminder rather than
+  /// calling `show()` — a notification that appears instantly proves only that
+  /// the channel works, and every failure this is meant to catch lives in the
+  /// *scheduling*, not the display.
+  ///
+  /// Exists because the alternative way to test a reminder is to set a date and
+  /// a time by hand and then wait, which is slow enough that it does not get
+  /// done.
+  Future<bool> scheduleTest({
+    Duration delay = const Duration(seconds: 30),
+  }) async {
+    if (!await ensureInitialized()) return false;
+    await _schedule(
+      ScheduledReminder(
+        id: testReminderId,
+        todoId: '',
+        title: 'Test reminder',
+        body: 'Reminders are working on this device.',
+        at: DateTime.now().add(delay),
+      ),
+      exact: await canScheduleExact(),
+    );
+    return true;
   }
 
   /// What the device is currently holding. Used by the diagnostics in Settings,

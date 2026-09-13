@@ -27,6 +27,10 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
   List<PendingNotificationRequest>? _pending;
   bool _loading = false;
 
+  /// Failures from the two buttons below, which are actions rather than reads
+  /// and so have nowhere else to report.
+  String? _error;
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<NotificationStatus> status = ref.watch(
@@ -156,11 +160,28 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
             ),
           ],
 
+          if (_error != null) ...<Widget>[
+            const SizedBox(height: 10),
+            _StatusLine(
+              icon: Icons.error_outline,
+              text: _error!,
+              color: AppColors.statusCritical,
+            ),
+          ],
+
           const SizedBox(height: 10),
           TextButton.icon(
             onPressed: _loading ? null : _check,
             icon: const Icon(Icons.fact_check_outlined, size: 18),
             label: const Text('Check what is actually scheduled'),
+          ),
+          // Setting a real reminder means a date picker, a time picker and then
+          // waiting — slow enough that it does not get done, which is how a
+          // scheduling bug survived to a release build. One tap instead.
+          TextButton.icon(
+            onPressed: _loading ? null : _sendTest,
+            icon: const Icon(Icons.notifications_none, size: 18),
+            label: const Text('Send a test reminder in 30 seconds'),
           ),
         ],
       ),
@@ -182,6 +203,34 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
   Future<void> _requestPermission() async {
     await ref.read(notificationServiceProvider).requestPermission();
     ref.invalidate(notificationStatusProvider);
+  }
+
+  Future<void> _sendTest() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final bool ok = await ref.read(notificationServiceProvider).scheduleTest();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = ok
+          ? null
+          : 'Could not schedule the test — notifications are unavailable on '
+                'this device.';
+    });
+    if (ok) {
+      // Refreshes the "Android is holding N" line, which should now include
+      // the test alarm.
+      await _check();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test reminder set. Leave the app and wait.'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openExactAlarmSettings() async {
