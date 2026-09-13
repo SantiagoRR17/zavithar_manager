@@ -181,7 +181,7 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
           TextButton.icon(
             onPressed: _loading ? null : _sendTest,
             icon: const Icon(Icons.notifications_none, size: 18),
-            label: const Text('Send a test reminder in 30 seconds'),
+            label: const Text('Test: one now, one in 30 seconds'),
           ),
         ],
       ),
@@ -226,7 +226,9 @@ class _ReminderSettingsCardState extends ConsumerState<ReminderSettingsCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Test reminder set. Leave the app and wait.'),
+            content: Text(
+              'One should appear now, one in 30 seconds. Leave the app.',
+            ),
           ),
         );
       }

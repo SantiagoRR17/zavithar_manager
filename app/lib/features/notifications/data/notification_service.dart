@@ -190,7 +190,7 @@ class NotificationService {
       // The test reminder is not in any plan, so an unqualified diff would
       // cancel it the moment anything else changed — which on a busy list is
       // well before it had a chance to fire.
-      if (p.id == testReminderId) continue;
+      if (p.id == testReminderId || p.id == testNowId) continue;
       if (!wanted.contains(p.id)) {
         await _plugin.cancel(id: p.id);
       }
@@ -213,15 +213,7 @@ class NotificationService {
       // can open that specific task rather than just the app.
       payload: reminder.todoId,
       scheduledDate: tz.TZDateTime.from(reminder.at, tz.local),
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-      ),
+      notificationDetails: _details(),
       // Falls back to inexact when the user has not allowed exact alarms.
       // Inexact still fires — Doze may just delay it, by minutes or by hours.
       // Refusing to schedule at all would turn a late reminder into no reminder,
@@ -235,6 +227,9 @@ class NotificationService {
   /// Reserved id for [scheduleTest], outside anything `notificationIdFor`
   /// can produce for a real todo.
   static const int testReminderId = 2147483646;
+
+  /// The immediate half of [scheduleTest].
+  static const int testNowId = 2147483645;
 
   /// Schedules one real alarm, shortly from now.
   ///
@@ -250,18 +245,48 @@ class NotificationService {
     Duration delay = const Duration(seconds: 30),
   }) async {
     if (!await ensureInitialized()) return false;
+
+    // **Two notifications, on purpose.** "Scheduled but never shown" has two
+    // possible causes that look identical from outside: the posting layer is
+    // broken (icon, channel, permission), or the alarm fires and the receiver
+    // cannot rebuild the notification from disk. One immediate and one
+    // scheduled separates them in a single test:
+    //
+    //   both appear      -> everything works
+    //   only the first   -> the alarm path is at fault, not posting
+    //   neither appears  -> posting is at fault, and scheduling is a red
+    //                       herring
+    await _plugin.show(
+      id: testNowId,
+      title: 'Test — right now',
+      body: 'Posted immediately, without an alarm.',
+      notificationDetails: _details(),
+    );
+
     await _schedule(
       ScheduledReminder(
         id: testReminderId,
         todoId: '',
-        title: 'Test reminder',
-        body: 'Reminders are working on this device.',
+        title: 'Test — scheduled',
+        body: 'Posted by an alarm 30 seconds later.',
         at: DateTime.now().add(delay),
       ),
       exact: await canScheduleExact(),
     );
     return true;
   }
+
+  /// Shared by the scheduled and immediate paths, so that a difference between
+  /// them can never be the notification's own configuration.
+  NotificationDetails _details() => NotificationDetails(
+    android: AndroidNotificationDetails(
+      _channel.id,
+      _channel.name,
+      channelDescription: _channel.description,
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+  );
 
   /// What the device is currently holding. Used by the diagnostics in Settings,
   /// because "did it actually get scheduled" is otherwise unanswerable until
