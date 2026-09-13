@@ -45,6 +45,8 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **Balances are adjusted with `FieldValue.increment`, never read-then-write** — the latter loses a concurrent contribution or payment, and does not queue correctly offline.
    - **An optional field needs three things**, or it is not really optional: `toMap` omits the key (never writes null), `copyWith` gets an explicit `clear*` flag, and `update` sends `FieldValue.delete()`.
    - **Currency is COP**, formatted only via `core/format/money.dart` — never a raw `'$$amount'` ([ADR 0009](docs/adr/0009-money-and-dates.md)).
+   - **Transactions are streamed only for the open period** — since the last closed month ([ADR 0012](docs/adr/0012-monthly-statements.md)). The balance is `sum(statement nets) + open period`. Closing a month is manual, reversible, and **deletes nothing**; only the *earliest* unclosed finished month may be closed, because skipping one would drop its transactions out of both the stream and every statement.
+   - **A transaction dated inside a closed month is rejected by the rules** (`periodIdOf()` + `exists()`), refused by the date picker, and caught afterwards by `verify()`. Unguarded it would vanish from the balance in silence.
    - **Rules gotcha:** Firestore OR-s all matching rules, so a collection with its own validated block must be excluded from the `match /{collection}/{docId}` catch-all in `firestore.rules`, or the wildcard waves everything through. The exclusion list already holds `transactions`, `savings`, `liabilities` — **add `todos` to it at Milestone 2.**
    - **The Firebase console bypasses security rules entirely** (admin credentials), as does the Admin SDK and any Cloud Function — a write that the console accepts proves nothing.
    - **The Rules Playground cannot test these rules either, and fails misleadingly.** All three collections require `createdAt == request.time`, which only `FieldValue.serverTimestamp()` can satisfy; the Playground's timestamps are typed by hand, so *every* simulated create/update is denied — on the timestamp, whatever else is in the payload. Testing `amount: -5` there returns "denied" and proves nothing. The Playground is only sound for checks not involving timestamps (cross-user reads, the collection allowlist). Real verification needs the **Firestore emulator + `@firebase/rules-unit-testing`**, which runs a real client SDK. See `docs/devlog/2026-09-13.md`.
@@ -66,6 +68,7 @@ users/{uid}/transactions/{id}   — amount, type, category, description?, date, 
 users/{uid}/savings/{id}        — name, targetAmount, currentAmount, deadline?, createdAt, updatedAt
 users/{uid}/liabilities/{id}    — name, type, originalAmount, remainingAmount, interestRate?, dueDate?, minimumPayment?
 users/{uid}/todos/{id}          — title, notes?, category, status, deadline?, reminderAt?, followUpOf?, priority?, timestamps
+users/{uid}/statements/{YYYY-MM} — periodStart/End, totalIncome, totalExpense, openingBalance, closingBalance, transactionCount, incomeByCategory, expenseByCategory, closedAt
 users/{uid}/categories/{id}     — optional, if categories become user-editable
 users/{uid}/devices/{id}        — fcmToken, platform, lastSeenAt
 ```
@@ -116,6 +119,13 @@ is Blaze-gated for new projects. See [ADR 0011](docs/adr/0011-free-tier-only.md)
 The rule to apply when a feature seems to need a server — scheduled work,
 webhooks, server-side aggregation, anything that must run while no device is
 awake: **it happens on a device, or it does not happen.**
+
+**Reads are the scarce resource, not storage.** 50,000 document reads a day
+against 1 GiB of space — roughly a million transactions, or 274 years of them.
+So the answer to a collection growing is to stop *reading* it, never to delete
+it: see [ADR 0012](docs/adr/0012-monthly-statements.md). Exceeding a quota
+returns `resource-exhausted` and stops the service until midnight US Pacific
+(2am Colombia); it never bills.
 
 ## Engineering conventions
 
