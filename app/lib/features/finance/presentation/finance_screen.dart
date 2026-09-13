@@ -44,11 +44,7 @@ class FinanceScreen extends ConsumerWidget {
         // each — a transaction, a goal, a debt. A single shared button would
         // have to guess.
         body: const TabBarView(
-          children: <Widget>[
-            TransactionsTab(),
-            SavingsTab(),
-            LiabilitiesTab(),
-          ],
+          children: <Widget>[TransactionsTab(), SavingsTab(), LiabilitiesTab()],
         ),
       ),
     );

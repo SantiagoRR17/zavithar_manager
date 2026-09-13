@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../domain/savings_goal.dart';
-import 'transactions_repository.dart' show FinanceFailure;
 
 /// The only place in the app that touches `users/{uid}/savings`.
 ///
@@ -71,7 +71,7 @@ class SavingsRepository {
       });
       return doc.id;
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -87,7 +87,7 @@ class SavingsRepository {
         SavingsGoal.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -111,7 +111,7 @@ class SavingsRepository {
         SavingsGoal.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -119,7 +119,7 @@ class SavingsRepository {
     try {
       await _raw.doc(id).delete();
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -133,7 +133,7 @@ class SavingsRepository {
         SavingsGoal.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 

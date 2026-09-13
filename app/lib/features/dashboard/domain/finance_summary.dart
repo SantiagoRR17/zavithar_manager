@@ -84,8 +84,7 @@ class FinanceSummary {
 
   /// True when there is nothing recorded anywhere — the signal for the
   /// dashboard to show an invitation instead of a grid of zeroes.
-  bool get isEmpty =>
-      transactionCount == 0 && goalCount == 0 && debtCount == 0;
+  bool get isEmpty => transactionCount == 0 && goalCount == 0 && debtCount == 0;
 
   /// This month's income minus this month's expense. Signed.
   num get monthNet => monthIncome - monthExpense;
@@ -136,8 +135,8 @@ class FinanceSummary {
       // `date` is when the money moved, chosen by the user — not `createdAt`,
       // which is when the row happened to be typed in. Entering January's rent
       // in February must count against January.
-      final bool thisMonth = tx.date.year == reference.year &&
-          tx.date.month == reference.month;
+      final bool thisMonth =
+          tx.date.year == reference.year && tx.date.month == reference.month;
 
       if (tx.type.isIncome) {
         income += tx.amount;

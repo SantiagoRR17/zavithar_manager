@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../theme/app_colors.dart';
 
 /// The empty state shared by all three finance tabs.
 ///
 /// A bare spinner that resolves into nothing reads as a broken screen. On a
 /// brand-new account this is the very first thing every tab displays, so it
 /// gets to be an invitation rather than an absence.
-class FinanceEmptyState extends StatelessWidget {
-  const FinanceEmptyState({
+class AppEmptyState extends StatelessWidget {
+  const AppEmptyState({
     required this.icon,
     required this.title,
     required this.message,
@@ -58,12 +58,8 @@ class FinanceEmptyState extends StatelessWidget {
 /// error is shown rather than hidden: this is a single-user app whose only user
 /// is also its developer, and a generic "something went wrong" would cost more
 /// than the polish is worth.
-class FinanceErrorState extends StatelessWidget {
-  const FinanceErrorState({
-    required this.title,
-    required this.error,
-    super.key,
-  });
+class AppErrorState extends StatelessWidget {
+  const AppErrorState({required this.title, required this.error, super.key});
 
   final String title;
   final Object error;

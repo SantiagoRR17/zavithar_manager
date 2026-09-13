@@ -64,7 +64,9 @@ final Provider<AsyncValue<FinanceSummary>> financeSummaryProvider =
       // (Signed out, the finance providers hand back an empty stream that never
       // emits, so this stays loading. The auth gate means no dashboard is ever
       // built in that state — see `transaction_providers.dart`.)
-      if (!transactions.hasValue || !savings.hasValue || !liabilities.hasValue) {
+      if (!transactions.hasValue ||
+          !savings.hasValue ||
+          !liabilities.hasValue) {
         return const AsyncValue<FinanceSummary>.loading();
       }
 

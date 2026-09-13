@@ -81,9 +81,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       // Backing out of the account picker is a normal thing to do, not an
       // error worth shouting about.
-      setState(() => _errorMessage = failure.wasCancelled
-          ? null
-          : failure.message);
+      setState(
+        () => _errorMessage = failure.wasCancelled ? null : failure.message,
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = 'Something went wrong: $error');
@@ -97,7 +97,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submitEmailForm() {
     // `validate()` runs every field's validator and paints the error text.
-    if (!(_formKey.currentState?.validate() ?? false)) return Future<void>.value();
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return Future<void>.value();
+    }
 
     final AuthRepository repository = ref.read(authRepositoryProvider);
     final String email = _emailController.text;

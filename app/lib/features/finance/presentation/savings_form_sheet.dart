@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_sheet.dart';
+import '../../../core/widgets/optional_date_field.dart';
 import '../application/transaction_providers.dart';
 import '../data/savings_repository.dart';
-import '../data/transactions_repository.dart' show FinanceFailure;
 import '../domain/savings_goal.dart';
 import 'widgets/amount_form_field.dart';
-import 'widgets/sheet_scaffold.dart';
 
 /// Create or edit a savings goal. Pass [initial] to edit.
 Future<void> showSavingsFormSheet(
   BuildContext context, {
   SavingsGoal? initial,
 }) {
-  return showFinanceSheet(
+  return showAppSheet(
     context,
     builder: (BuildContext context) => SavingsFormSheet(initial: initial),
   );
@@ -67,7 +68,7 @@ class _SavingsFormSheetState extends ConsumerState<SavingsFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FinanceSheetBody(
+    return AppSheetBody(
       formKey: _formKey,
       title: _isEditing ? 'Edit goal' : 'New savings goal',
       error: _error,
@@ -84,8 +85,9 @@ class _SavingsFormSheetState extends ConsumerState<SavingsFormSheet> {
             labelText: 'What are you saving for?',
             hintText: 'New laptop',
           ),
-          validator: (String? value) =>
-              (value == null || value.trim().isEmpty) ? 'Give it a name.' : null,
+          validator: (String? value) => (value == null || value.trim().isEmpty)
+              ? 'Give it a name.'
+              : null,
         ),
         AmountFormField(
           controller: _targetController,
@@ -154,7 +156,7 @@ class _SavingsFormSheetState extends ConsumerState<SavingsFormSheet> {
         );
       }
       if (mounted) Navigator.of(context).pop();
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       if (mounted) {
         setState(() {
           _error = e.message;
@@ -173,7 +175,7 @@ class _SavingsFormSheetState extends ConsumerState<SavingsFormSheet> {
 /// wrong, because it would overwrite the balance rather than adjust it (see
 /// `SavingsRepository.contribute` on why that distinction matters).
 Future<void> showContributeSheet(BuildContext context, SavingsGoal goal) {
-  return showFinanceSheet(
+  return showAppSheet(
     context,
     builder: (BuildContext context) => _ContributeSheet(goal: goal),
   );
@@ -206,7 +208,7 @@ class _ContributeSheetState extends ConsumerState<_ContributeSheet> {
   Widget build(BuildContext context) {
     final SavingsGoal goal = widget.goal;
 
-    return FinanceSheetBody(
+    return AppSheetBody(
       formKey: _formKey,
       title: goal.name,
       subtitle:
@@ -271,7 +273,7 @@ class _ContributeSheetState extends ConsumerState<_ContributeSheet> {
         _withdrawing ? -amount : amount,
       );
       if (mounted) Navigator.of(context).pop();
-    } on FinanceFailure catch (e) {
+    } on DataFailure catch (e) {
       if (mounted) {
         setState(() {
           _error = e.message;

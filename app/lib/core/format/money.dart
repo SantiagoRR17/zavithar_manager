@@ -45,8 +45,7 @@ abstract final class Money {
 
   /// `12500` → `$12.500`. Always unsigned — amounts are stored positive and the
   /// sign is a presentation decision belonging to [formatSigned].
-  static String format(num amount) =>
-      '$_currencySymbol${grouped(amount)}';
+  static String format(num amount) => '$_currencySymbol${grouped(amount)}';
 
   /// `12500` → `12.500`. The separators without the symbol.
   ///
@@ -172,10 +171,19 @@ abstract final class AppDates {
 
   static final DateFormat _short = DateFormat('d MMM yyyy', _locale);
   static final DateFormat _monthYear = DateFormat('MMMM yyyy', _locale);
+  static final DateFormat _shortWithTime = DateFormat(
+    'd MMM yyyy, HH:mm',
+    _locale,
+  );
   static final DateFormat _dayAndMonth = DateFormat('d MMM', _locale);
 
   /// `25 Aug 2026`.
   static String short(DateTime date) => _short.format(date);
+
+  /// `25 Aug 2026, 09:00`. 24-hour, because a reminder set for `7:00` that
+  /// fires in the evening is a bug report waiting to happen, and am/pm is
+  /// one more thing to mis-tap.
+  static String shortWithTime(DateTime date) => _shortWithTime.format(date);
 
   /// `September 2026`. Used for the dashboard's this-month heading, which has
   /// to name the month it is totalling — an unlabelled "income this month" is

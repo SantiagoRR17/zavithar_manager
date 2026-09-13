@@ -124,9 +124,7 @@ class _AccountCard extends StatelessWidget {
             CircleAvatar(
               radius: 26,
               backgroundColor: AppColors.brandPrimaryDark,
-              foregroundImage: photoUrl == null
-                  ? null
-                  : NetworkImage(photoUrl),
+              foregroundImage: photoUrl == null ? null : NetworkImage(photoUrl),
               child: Text(
                 initial,
                 style: const TextStyle(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+
+import '../../../core/errors/data_failure.dart';
 
 import '../domain/finance_transaction.dart';
 
@@ -104,7 +105,7 @@ class TransactionsRepository {
       });
       return doc.id;
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -128,7 +129,7 @@ class TransactionsRepository {
         FinanceTransaction.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -136,7 +137,7 @@ class TransactionsRepository {
     try {
       await _raw.doc(id).delete();
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -157,7 +158,7 @@ class TransactionsRepository {
         FinanceTransaction.fieldUpdatedAt: FieldValue.serverTimestamp(),
       });
     } on FirebaseException catch (e) {
-      throw FinanceFailure(_messageFor(e));
+      throw DataFailure(_messageFor(e));
     }
   }
 
@@ -179,18 +180,4 @@ class TransactionsRepository {
       _ => e.message ?? 'Something went wrong (${e.code}).',
     };
   }
-}
-
-/// A Firestore error that is safe and useful to show in the UI.
-///
-/// The finance counterpart to `AuthFailure` — widgets catch this so that
-/// presentation code never has to know Firestore's error codes.
-@immutable
-class FinanceFailure implements Exception {
-  const FinanceFailure(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
 }

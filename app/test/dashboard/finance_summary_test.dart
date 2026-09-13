@@ -33,7 +33,11 @@ void main() {
     );
   }
 
-  SavingsGoal goal({required num target, required num current, String id = 'g'}) {
+  SavingsGoal goal({
+    required num target,
+    required num current,
+    String id = 'g',
+  }) {
     return SavingsGoal(
       id: id,
       name: 'Goal',
@@ -109,7 +113,11 @@ void main() {
       );
 
       expect(summary.balance, 140000);
-      expect(summary.monthIncome, 40000, reason: 'only September is this month');
+      expect(
+        summary.monthIncome,
+        40000,
+        reason: 'only September is this month',
+      );
     });
   });
 
@@ -223,7 +231,11 @@ void main() {
       );
 
       expect(summary.savingsProgress, 1);
-      expect(summary.savedTotal, 150000, reason: 'the real figure is unclamped');
+      expect(
+        summary.savedTotal,
+        150000,
+        reason: 'the real figure is unclamped',
+      );
     });
 
     test('progress is zero with no goals rather than NaN', () {

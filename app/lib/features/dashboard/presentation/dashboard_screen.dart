@@ -317,7 +317,7 @@ class _SectionLabel extends StatelessWidget {
 ///
 /// A dashboard of `$0` tiles looks like a screen that failed to load rather
 /// than one with nothing to show yet, which is the same reasoning behind
-/// `FinanceEmptyState` on the three finance tabs.
+/// `AppEmptyState` on the three finance tabs.
 class _DashboardEmpty extends StatelessWidget {
   const _DashboardEmpty();
 
