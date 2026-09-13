@@ -26,6 +26,19 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
+# **The rule that was missing**, and the one that actually matters.
+#
+# Gson resolves a generic type through an anonymous `TypeToken` subclass and
+# reads the type argument back out of its *generic signature*. AGP 8 turns on
+# R8 "full mode" by default, which is free to strip exactly that — so
+# `TypeToken` resolution returns the erased type and deserialisation fails.
+#
+# Keeping the class alone is not enough; the signature has to survive too,
+# which is why these are `allowobfuscation,allowshrinking` rather than a plain
+# `-keep`.
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+
 # Any class whose fields Gson reads by reflection must keep those fields.
 -keepclassmembers,allowobfuscation class * {
   @com.google.gson.annotations.SerializedName <fields>;

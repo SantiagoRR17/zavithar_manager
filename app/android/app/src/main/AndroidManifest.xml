@@ -50,6 +50,36 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- **Required for scheduled notifications to appear at all.**
+             Since flutter_local_notifications v16 the plugin no longer declares
+             these in its own manifest; the app must.
+
+             Without them the failure is completely silent and looks like
+             anything but a missing declaration: `zonedSchedule` succeeds,
+             `pendingNotificationRequests` reports the alarm, and `dumpsys alarm`
+             confirms AlarmManager firing the PendingIntent at exactly the right
+             moment — because AlarmManager's job is done once it fires. The
+             broadcast then resolves to no component, and nothing happens. No
+             error, no log line, in debug and release alike. An immediate
+             `show()` works perfectly the whole time, because it never goes
+             through a receiver.
+
+             ScheduledNotificationBootReceiver re-registers pending alarms after
+             a restart, which is what RECEIVE_BOOT_COMPLETED above is for. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
