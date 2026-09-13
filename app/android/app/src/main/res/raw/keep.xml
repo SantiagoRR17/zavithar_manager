@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Protects resources that only ever appear as a *string* at runtime.
+     The release build shrinks resources, and the shrinker works by scanning
+     code and XML for references. `ic_stat_zavithar` is named only in Dart, as
+     the string '@drawable/ic_stat_zavithar' handed to a platform channel, so
+     the shrinker cannot see it and deletes it.
+     The result was not a missing icon: flutter_local_notifications throws
+     PlatformException(invalid_icon) on initialize, and the app never started. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_zavithar" />

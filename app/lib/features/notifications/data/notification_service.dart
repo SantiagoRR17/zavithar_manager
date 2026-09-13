@@ -22,6 +22,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
 
   bool _ready = false;
+  bool _initialising = false;
+  bool _failed = false;
 
   /// Android needs a channel before anything can be posted on API 26+.
   ///
@@ -46,6 +48,35 @@ class NotificationService {
   /// `tz` package has no locations at all, so building one throws. Setting the
   /// *local* location matters just as much: left at the default UTC, a reminder
   /// for 09:00 in Bogotá would fire at 04:00.
+  /// Initialises if it has not been, and reports whether it worked.
+  ///
+  /// **Nothing may await this before the first frame.** An earlier version was
+  /// called from `main()` ahead of `runApp()`, and when it threw — a
+  /// notification icon the release build's resource shrinker had deleted —
+  /// the app never rendered at all. It sat on the splash screen forever, with
+  /// no error a user could see. A reminder icon is not worth the app failing to
+  /// open, and nothing optional should ever be able to hold the UI hostage.
+  Future<bool> ensureInitialized({
+    DidReceiveNotificationResponseCallback? onTap,
+  }) async {
+    if (_ready) return true;
+    if (_failed || _initialising) return false;
+    _initialising = true;
+    try {
+      await initialize(onTap: onTap);
+      return _ready;
+    } catch (error, stack) {
+      // Swallowed on purpose, and remembered: retrying a broken plugin setup on
+      // every todo change would just log the same failure forever.
+      _failed = true;
+      debugPrint('Notifications unavailable: $error');
+      debugPrint('$stack');
+      return false;
+    } finally {
+      _initialising = false;
+    }
+  }
+
   Future<void> initialize({
     DidReceiveNotificationResponseCallback? onTap,
   }) async {
@@ -127,7 +158,9 @@ class NotificationService {
   /// scheduling an existing ID replaces it: that is how an edited title or a
   /// moved time reaches an alarm that was already set.
   Future<void> sync(List<ScheduledReminder> reminders) async {
-    if (!_ready) return;
+    // Initialised here rather than at startup, so the cost — and any failure —
+    // lands on the feature that needs it instead of on the app opening.
+    if (!await ensureInitialized()) return;
 
     final bool exact = await canScheduleExact();
 

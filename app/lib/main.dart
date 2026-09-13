@@ -12,14 +12,16 @@ import 'firebase_options.dart';
 
 /// Entry point.
 ///
-/// Two things have to happen before the first frame:
+/// Exactly two things happen before the first frame, and the list is short on
+/// purpose — anything awaited here can prevent the app from rendering at all:
 ///   1. Firebase is initialised — nothing that touches Auth or Firestore works
 ///      until it is, and the router asks for auth state immediately.
 ///   2. Firestore's offline cache is switched on, which is what satisfies the
 ///      "app keeps working offline and reconciles later" requirement (FR-18,
 ///      NFR-3).
-///   3. The notification service is initialised, which loads the time-zone
-///      database that `zonedSchedule` needs (Milestone 3, ADR 0011).
+///
+/// Notifications are deliberately **not** in that list: they initialise lazily,
+/// so that nothing optional can stop the app from opening.
 Future<void> main() async {
   // Required before any plugin call that happens before `runApp` — it wires up
   // the channel Flutter uses to talk to the platform.
@@ -53,21 +55,16 @@ Future<void> main() async {
   // ProviderScope is where Riverpod stores every provider's state. It has to
   // sit above anything that reads a provider, so it wraps the whole app.
   //
-  // The container is built here rather than letting `ProviderScope` make its
-  // own, so that the notification service can be initialised *before* the first
-  // frame. Scheduling an alarm needs the time-zone database loaded, and a
-  // reminder registered against an uninitialised `tz` throws rather than
-  // firing late — a failure with no symptom until the moment it was meant to
-  // go off.
-  final ProviderContainer container = ProviderContainer();
-  await container.read(notificationServiceProvider).initialize();
-
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const ZavitharManagerApp(),
-    ),
-  );
+  // **Nothing optional is awaited before this line.** An earlier version
+  // initialised the notification plugin here first, and when that threw — the
+  // release build's resource shrinker had deleted the notification icon, which
+  // makes `initialize` fail — the app never rendered. It sat on the splash
+  // screen forever with no visible error, because `runApp` was never reached.
+  //
+  // Notifications now initialise lazily, inside the service, the first time
+  // reminders are actually synced. A failure there costs reminders; it cannot
+  // cost the app.
+  runApp(const ProviderScope(child: ZavitharManagerApp()));
 }
 
 class ZavitharManagerApp extends ConsumerWidget {
