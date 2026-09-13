@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- The window the OS paints while the process starts, before Flutter draws
+     anything. Dark in both configurations on purpose: the app is dark-only, so
+     following the system theme here would produce a white flash on a device in
+     light mode and nothing else. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item android:drawable="@color/zavithar_page" />
 </layer-list>
