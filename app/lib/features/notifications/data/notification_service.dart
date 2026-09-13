@@ -65,9 +65,12 @@ class NotificationService {
 
     await _plugin.initialize(
       settings: const InitializationSettings(
-        // The launcher icon doubles as the notification icon. A dedicated
-        // monochrome asset would look better on Android and is Milestone 4.
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        // **Not the launcher icon.** Android throws away the colour of a
+        // status-bar icon and keeps only its alpha channel, so a full-colour
+        // launcher icon arrives as a featureless white blob. `ic_stat_zavithar`
+        // is the same Z drawn as pure white on transparency, which is what the
+        // platform actually wants.
+        android: AndroidInitializationSettings('@drawable/ic_stat_zavithar'),
       ),
       onDidReceiveNotificationResponse: onTap,
     );

@@ -55,6 +55,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -97,3 +98,26 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Launcher icon generation — `dart run flutter_launcher_icons`.
+#
+# The source art is a flat white Z on the brand red. Three derived assets,
+# because Android wants three different things:
+#   launcher.png   composed square, the legacy icon for Android 7 and older
+#   foreground.png white Z on transparency, scaled so its furthest corner sits
+#                  inside the adaptive icon's 33%-radius safe zone — the
+#                  original art reached 38.7% and a circular mask would have
+#                  clipped the Z's points
+#   monochrome     the same foreground, for Android 13 themed icons
+#
+# The notification icon is NOT generated here: it is a separate drawable at
+# android/app/src/main/res/drawable-*/ic_stat_zavithar.png, because Android
+# discards colour in the status bar and uses only the alpha channel.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/launcher.png"
+  adaptive_icon_background: "#B3122B"
+  adaptive_icon_foreground: "assets/icon/foreground.png"
+  adaptive_icon_monochrome: "assets/icon/foreground.png"
+  min_sdk_android: 21
