@@ -1,0 +1,12 @@
+{
+  "_comment": [
+    "Composite Firestore indexes, deployed with `firebase deploy --only firestore:indexes`.",
+    "Empty at Milestone 0 because no compound queries exist yet. Single-field indexes are",
+    "created automatically by Firestore and never need to be listed here.",
+    "Per claude/data-model.md, indexes are added when a query actually needs one: the first",
+    "run of an unindexed compound query fails with a console link that creates the exact",
+    "index, which is then pasted in here so it is reproducible rather than click-only."
+  ],
+  "indexes": [],
+  "fieldOverrides": []
+}

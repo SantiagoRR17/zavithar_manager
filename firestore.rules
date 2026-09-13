@@ -1,0 +1,249 @@
+rules_version = '2';
+
+// Firestore security rules for Zavithar Manager.
+//
+// These are the REAL enforcement layer. The Flutter forms validate too, but
+// client-side checks only improve the experience — anyone can talk to Firestore
+// directly with the project's public API key, so anything not forbidden here is
+// allowed to the whole internet.
+//
+// Milestone 0 ships the ownership baseline only: you may read and write
+// documents under your own user, in a known collection, and nothing else.
+// Per-field type and range validation is added per module as each one is built
+// (see `claude/data-model.md` → Validation strategy) — tightening rules later is
+// safe, because existing data is never re-validated.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Everything the app stores lives under users/{userId}/..., which is what
+    // makes this single ownership check sufficient. See `claude/data-model.md`.
+    match /users/{userId} {
+
+      // The collections the app actually uses. The allowlist matters: without
+      // it, an authenticated user could create arbitrary collections under
+      // their own document and use the project as free storage.
+      function isKnownCollection(collection) {
+        return collection in [
+          'transactions',
+          'savings',
+          'liabilities',
+          'todos',
+          'categories',
+          'devices'
+        ];
+      }
+
+      function isOwner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // The user document itself (profile/preferences, if ever needed).
+      allow read, write: if isOwner();
+
+      // --- transactions (Milestone 1) -------------------------------------
+      //
+      // The first collection to move past the ownership baseline onto real
+      // per-field validation. The others stay on the baseline below until
+      // their milestone builds them — tightening later is safe, because
+      // existing documents are never re-validated.
+      //
+      // What this actually defends against: the project's API key is public
+      // (ADR 0008), so anyone can talk to this database as *some* signed-in
+      // user. Ownership stops them reading the owner's data. These rules stop
+      // the owner's own account being used to store arbitrary junk, and stop a
+      // buggy client writing a document the app will later crash on.
+      match /transactions/{txId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'amount', 'type', 'category', 'description',
+            'date', 'account', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'amount', 'type', 'category', 'date', 'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().amount is number
+              && data().amount > 0
+              && data().type in ['income', 'expense']
+              && data().category is string
+              && data().category.size() >= 1
+              && data().category.size() <= 40
+              && data().date is timestamp
+              // `description` and `account` are optional. Note the shape:
+              // absent is fine, present-but-wrong is not.
+              && (!('description' in data())
+                  || (data().description is string
+                      && data().description.size() <= 200))
+              && (!('account' in data())
+                  || (data().account is string
+                      && data().account.size() <= 40));
+        }
+
+        // Audit timestamps must be the *server's* clock, not the client's.
+        // `request.time` is set by Firestore when the write arrives, and
+        // `FieldValue.serverTimestamp()` resolves to exactly it — so this
+        // passes for an honest client and fails for one that tries to
+        // backdate its own history.
+        function hasServerTimestamps() {
+          return data().createdAt == request.time
+              && data().updatedAt == request.time;
+        }
+
+        // `createdAt` is immutable after creation. Without this an update
+        // could rewrite when a transaction was first recorded.
+        function keepsCreatedAt() {
+          return data().createdAt == resource.data.createdAt;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && hasServerTimestamps();
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && keepsCreatedAt()
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
+      // --- savings (Milestone 1) -------------------------------------------
+      match /savings/{goalId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'name', 'targetAmount', 'currentAmount',
+            'deadline', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'name', 'targetAmount', 'currentAmount', 'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().name is string
+              && data().name.size() >= 1
+              && data().name.size() <= 80
+              && data().targetAmount is number
+              && data().targetAmount > 0
+              // May exceed the target: over-saving is real and recording it is
+              // not an error.
+              && data().currentAmount is number
+              && data().currentAmount >= 0
+              // `deadline` is optional. Absent is fine; present-but-wrong is
+              // not.
+              && (!('deadline' in data()) || data().deadline is timestamp);
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == resource.data.createdAt
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
+      // --- liabilities (Milestone 1) ---------------------------------------
+      match /liabilities/{liabilityId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'name', 'type', 'originalAmount', 'remainingAmount',
+            'interestRate', 'dueDate', 'minimumPayment',
+            'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'name', 'type', 'originalAmount', 'remainingAmount',
+            'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().name is string
+              && data().name.size() >= 1
+              && data().name.size() <= 80
+              && data().type is string
+              && data().type.size() <= 40
+              && data().originalAmount is number
+              && data().originalAmount > 0
+              // Deliberately NOT capped at originalAmount: interest and late
+              // fees make a debt genuinely grow past what was borrowed, and an
+              // app that refuses to record that is lying about the situation
+              // it exists to track. Also not floored at 0 — an overpayment
+              // should be visible rather than silently swallowed.
+              && data().remainingAmount is number
+              && (!('interestRate' in data())
+                  || (data().interestRate is number
+                      && data().interestRate >= 0
+                      && data().interestRate <= 100))
+              && (!('dueDate' in data()) || data().dueDate is timestamp)
+              && (!('minimumPayment' in data())
+                  || (data().minimumPayment is number
+                      && data().minimumPayment >= 0));
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == resource.data.createdAt
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
+      // --- everything else: Milestone 0 ownership baseline -----------------
+      //
+      // todos, categories, devices. Each graduates to its own validated block
+      // as its milestone lands.
+      //
+      // **The exclusion list is load-bearing.** This wildcard also matches
+      // `transactions/{id}`, `savings/{id}` and `liabilities/{id}`, and
+      // Firestore evaluates every matching rule and allows a write if *any one*
+      // of them allows it — they are OR-ed, not AND-ed. Without these
+      // `!=` clauses, the strict blocks above would enforce nothing at all
+      // while looking completely correct in this file.
+      //
+      // Milestone 2: add 'todos' here when it gets its own block.
+      match /{collection}/{docId} {
+        allow read, write: if isOwner()
+                           && isKnownCollection(collection)
+                           && !(collection in [
+                                'transactions', 'savings', 'liabilities'
+                              ]);
+      }
+    }
+
+    // Anything not matched above is denied. This is Firestore's default, but
+    // stating it makes the intent explicit to the next person reading the file.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

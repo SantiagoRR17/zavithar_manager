@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "194239310855",
+    "project_id": "zavithar-manager",
+    "storage_bucket": "zavithar-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:194239310855:android:ddd825a730057a0b220ea2",
+        "android_client_info": {
+          "package_name": "com.zavithar.zavithar_manager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "194239310855-hbjk9od9l94som48fc8b5ifs3so5jbaa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zavithar.zavithar_manager",
+            "certificate_hash": "cc1152247045b25c3da393363ab6062a9a2cb244"
+          }
+        },
+        {
+          "client_id": "194239310855-6009h2cqica1npmuh6kcrg1cv83nm3n3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrnMPg5vLpcjnDiniFi1nD6U-wHwzAYuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "194239310855-6009h2cqica1npmuh6kcrg1cv83nm3n3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
