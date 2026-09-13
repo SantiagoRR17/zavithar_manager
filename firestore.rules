@@ -30,6 +30,7 @@ service cloud.firestore {
           'todos',
           'statements',
           'budgets',
+          'recurring',
           'categories',
           'devices'
         ];
@@ -452,6 +453,71 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+
+      // --- recurring (Milestone 4) ------------------------------------------
+      //
+      // A template plus a schedule. It never moves money: it produces ordinary
+      // documents in `transactions`, which carry their own validation — so the
+      // rules here guard the *template*, and the occurrences it creates are
+      // checked by the transaction rules like anything else. That includes the
+      // closed-month guard, which is why an occurrence falling in a closed
+      // month is refused rather than quietly written on a different day.
+      match /recurring/{ruleId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'amount', 'type', 'category', 'description', 'account',
+            'cadence', 'anchorDay', 'nextRunAt', 'lastRunAt', 'active',
+            'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'amount', 'type', 'category', 'cadence', 'anchorDay',
+            'nextRunAt', 'active', 'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().amount is number
+              && data().amount > 0
+              && data().type in ['income', 'expense']
+              && data().category is string
+              && data().category.size() >= 1
+              && data().category.size() <= 40
+              && data().cadence in ['weekly', 'monthly', 'yearly']
+              // 1-31 covers a day of the month; a weekly rule uses 1-7 for the
+              // weekday, which this range already contains.
+              && data().anchorDay is int
+              && data().anchorDay >= 1
+              && data().anchorDay <= 31
+              && data().nextRunAt is timestamp
+              && data().active is bool
+              && (!('lastRunAt' in data()) || data().lastRunAt is timestamp)
+              && (!('description' in data())
+                  || (data().description is string
+                      && data().description.size() <= 200))
+              && (!('account' in data())
+                  || (data().account is string
+                      && data().account.size() <= 40));
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == resource.data.createdAt
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
       // categories and devices. Each graduates to its own validated block as
@@ -471,7 +537,8 @@ service cloud.firestore {
                            && isKnownCollection(collection)
                            && !(collection in [
                                 'transactions', 'savings', 'liabilities',
-                                'todos', 'statements', 'budgets'
+                                'todos', 'statements', 'budgets',
+                                'recurring'
                               ]);
       }
     }

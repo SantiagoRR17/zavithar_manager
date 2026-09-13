@@ -332,6 +332,78 @@ describe('todos', () => {
   });
 });
 
+describe('recurring', () => {
+  const validRule = (overrides = {}) => ({
+    amount: 900000,
+    type: 'expense',
+    category: 'rent',
+    cadence: 'monthly',
+    anchorDay: 1,
+    nextRunAt: Timestamp.fromDate(new Date('2026-10-01T09:00:00Z')),
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  });
+
+  it('accepts a well-formed rule', async () => {
+    await assertSucceeds(
+      setDoc(doc(owner, path('recurring', 'rent')), validRule()),
+    );
+  });
+
+  it('REFUSES an unknown cadence', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('recurring', 'odd')),
+        validRule({ cadence: 'fortnightly' }),
+      ),
+    );
+  });
+
+  it('REFUSES an anchor day outside 1-31', async () => {
+    await assertFails(
+      setDoc(doc(owner, path('recurring', 'zero')), validRule({ anchorDay: 0 })),
+    );
+    await assertFails(
+      setDoc(doc(owner, path('recurring', 'big')), validRule({ anchorDay: 32 })),
+    );
+  });
+
+  it('REFUSES a non-integer anchor day', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('recurring', 'frac')),
+        validRule({ anchorDay: 1.5 }),
+      ),
+    );
+  });
+
+  it('REFUSES a zero or negative amount', async () => {
+    await assertFails(
+      setDoc(doc(owner, path('recurring', 'free')), validRule({ amount: 0 })),
+    );
+  });
+
+  it('REFUSES active as a string', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('recurring', 'str')),
+        validRule({ active: 'true' }),
+      ),
+    );
+  });
+
+  it('accepts a paused rule', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(owner, path('recurring', 'paused')),
+        validRule({ active: false }),
+      ),
+    );
+  });
+});
+
 describe('budgets', () => {
   const validBudget = (overrides = {}) => ({
     category: 'groceries',
