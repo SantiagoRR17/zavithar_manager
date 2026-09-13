@@ -83,6 +83,14 @@ class _DashboardBody extends StatelessWidget {
               label: 'Saved',
               value: Money.format(data.savedTotal),
               icon: Icons.savings_outlined,
+              // Green, not the brand red. On this screen red already means
+              // "expense" — the arrow on the tile two rows up — so a red piggy
+              // bank made savings read as something to worry about, while the
+              // amber debt tile beside it looked calmer. The thing you want
+              // more of cannot look worse than the thing you want less of.
+              // The palette across this screen is now: green is yours, amber
+              // is owed, red is spent.
+              accent: AppColors.statusGood,
               progress: data.savingsProgress,
               caption: data.goalCount == 0
                   ? 'No goals yet'
@@ -201,8 +209,24 @@ class _NetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool up = net >= 0;
-    final Color tone = up ? AppColors.statusGood : AppColors.brandPrimaryLight;
+    // Three states, not two. Treating zero as positive — the obvious
+    // `net >= 0` — puts a green tick and a "+$0" on a month in which nothing
+    // happened, which reads as approval of an achievement that does not exist.
+    // A month with no activity is neither good nor bad news, and the row says
+    // so by being neutral.
+    final bool isZero = net == 0;
+    final bool up = net > 0;
+
+    final Color tone = isZero
+        ? AppColors.muted
+        : (up ? AppColors.statusGood : AppColors.brandPrimaryLight);
+
+    final IconData icon = isZero
+        ? Icons.remove_circle_outline
+        : (up ? Icons.check_circle_outline : Icons.error_outline);
+
+    // No sign on zero either: "+$0" implies a direction that $0 does not have.
+    final String sign = isZero ? '' : (up ? '+' : '−');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -212,11 +236,7 @@ class _NetRow extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Icon(
-            up ? Icons.check_circle_outline : Icons.error_outline,
-            size: 16,
-            color: tone,
-          ),
+          Icon(icon, size: 16, color: tone),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -225,7 +245,7 @@ class _NetRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${up ? '+' : '−'}${Money.format(net)}',
+            '$sign${Money.format(net)}',
             style: TextStyle(
               color: tone,
               fontSize: 15,
