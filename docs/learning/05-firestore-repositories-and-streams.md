@@ -321,6 +321,7 @@ milliseconds and it is where both real bugs in this session were caught.
 - `app/lib/core/format/money.dart`
 - the `transactions`, `savings` and `liabilities` blocks in `firestore.rules`
 
-**Next:** lesson 06 will cover forms and validation properly — `Form`,
-`GlobalKey<FormState>`, controllers and why they need disposing, and the custom
-`TextInputFormatter` behind the amount field's live thousands grouping.
+**Next:** [lesson 06 — what actually protects your data](06-what-actually-protects-your-data.md),
+which answers the question that came up when the repository went public: whether
+making it private would have been enough. (Forms and validation moved to lesson
+07.)
