@@ -2,6 +2,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+/// The OAuth client `google_sign_in` authenticates against on Android.
+///
+/// **This is the *web* client, not the Android one**, and that is the part that
+/// catches everyone. `google-services.json` lists three OAuth clients for this
+/// project: two of `client_type` 1 — one per registered signing certificate,
+/// debug and release — and one of `client_type` 3. Android needs the
+/// `client_type: 3` entry, because the token being requested is the one a
+/// *server* would verify. Firebase Auth is that server.
+///
+/// Passing an Android client id here instead produces a sign-in that fails
+/// with no useful message at all.
+///
+/// Not a secret: it is already in the committed `google-services.json`
+/// ([ADR 0008](../../../../docs/adr/0008-committing-firebase-config.md)). It
+/// lives here as a named constant so that the value has one home and an
+/// explanation, rather than being an opaque string inside a call.
+const String _serverClientId =
+    '194239310855-6009h2cqica1npmuh6kcrg1cv83nm3n3.apps.googleusercontent.com';
+
 /// The only place in the app that talks to Firebase Auth.
 ///
 /// Why this file exists: the project convention (`CLAUDE.md` → Engineering
@@ -49,11 +68,15 @@ class AuthRepository {
 
   /// Must be called once before [signInWithGoogle].
   ///
-  /// No client ID is passed: on Android the plugin reads the web OAuth client
-  /// out of `google-services.json`, which `flutterfire configure` puts in place.
+  /// **`serverClientId` has to be passed explicitly.** An earlier version left
+  /// it out, on the reasonable-sounding assumption that the plugin would read
+  /// it from `google-services.json` the way the old Play-services-based
+  /// versions did. `google_sign_in` 7.x does not: it fails at sign-in time with
+  /// *"serverClientId must be provided on Android"*, which is a long way from
+  /// the line that caused it.
   Future<void> initializeGoogleSignIn() async {
     if (!supportsGoogleSignIn) return;
-    await _googleSignIn.initialize();
+    await _googleSignIn.initialize(serverClientId: _serverClientId);
   }
 
   /// Interactive Google sign-in, then exchange the Google ID token for a
