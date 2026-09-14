@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/category_set.dart';
 import '../../../../core/errors/data_failure.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/async_states.dart';
 import '../../application/recurring_providers.dart';
 import '../../data/recurring_repository.dart';
-import '../../domain/finance_categories.dart';
 import '../../domain/recurring_rule.dart';
 import '../recurring_form_sheet.dart';
 
@@ -236,14 +237,17 @@ class _PendingRecurrenceCardState extends ConsumerState<PendingRecurrenceCard> {
   }
 }
 
-class _RuleCard extends StatelessWidget {
+class _RuleCard extends ConsumerWidget {
   const _RuleCard({required this.rule});
 
   final RecurringRule rule;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bool income = rule.type.isIncome;
+    final CategorySet categories = ref.watch(
+      categorySetProvider(rule.type.categoryKind),
+    );
 
     return Material(
       color: AppColors.surface1,
@@ -267,7 +271,7 @@ class _RuleCard extends StatelessWidget {
                       child: Text(
                         rule.description?.trim().isNotEmpty == true
                             ? rule.description!.trim()
-                            : FinanceCategories.label(rule.category),
+                            : categories.label(rule.category),
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 15,
@@ -305,7 +309,7 @@ class _RuleCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      FinanceCategories.label(rule.category),
+                      categories.label(rule.category),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,

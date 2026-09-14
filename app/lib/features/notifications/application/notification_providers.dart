@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/category_set.dart';
+import '../../categories/domain/user_category.dart';
 import '../../todos/application/todo_providers.dart';
 import '../../todos/domain/todo.dart';
 import '../data/notification_service.dart';
@@ -21,7 +24,13 @@ final Provider<List<ScheduledReminder>> reminderPlanProvider =
     Provider<List<ScheduledReminder>>((Ref ref) {
       final List<Todo> todos =
           ref.watch(todosStreamProvider).asData?.value ?? const <Todo>[];
-      return ReminderPlan.from(todos);
+      // The user's own category names reach the lock screen too: a reminder
+      // that says "Work" after the list was renamed to "Trabajo" would be the
+      // one place in the app still speaking the old language.
+      final CategorySet categories = ref.watch(
+        categorySetProvider(CategoryKind.todo),
+      );
+      return ReminderPlan.from(todos, categoryLabel: categories.label);
     });
 
 /// Keeps Android's registered alarms in step with the plan.

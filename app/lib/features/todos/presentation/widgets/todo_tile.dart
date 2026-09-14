@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/money.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/user_category.dart';
 import '../../domain/todo.dart';
 
 /// One task in the list.
@@ -243,16 +246,30 @@ class _MetaChip extends StatelessWidget {
 /// Shared with the filter chips so the colour of "Work" is drawn from one place
 /// on both. [AppColors.onCategory] picks the text colour, because gold is light
 /// enough that white on it fails contrast.
-class CategoryPill extends StatelessWidget {
+///
+/// **A category the brand has no colour for falls back to the muted tone.**
+/// The four category colours are fixed and never reassigned or cycled
+/// (`CLAUDE.md` → Brand & UI tokens), so a fifth user-added todo category does
+/// not get a generated hue — it gets the neutral one and leans on its label,
+/// which is the same answer the dataviz rules give for a ninth series.
+///
+/// It reads the label from the user's own list, so renaming `work` to `Trabajo`
+/// changes every badge in the app at once.
+class CategoryPill extends ConsumerWidget {
   const CategoryPill({required this.category, this.dimmed = false, super.key});
 
   final String category;
   final bool dimmed;
 
   @override
-  Widget build(BuildContext context) {
-    final Color background =
-        AppColors.categoryColors[category] ?? AppColors.muted;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Color? brand = AppColors.categoryColors[category];
+    final Color background = brand ?? AppColors.muted;
+    // White on the muted grey measures about 2.6:1, so the fallback takes the
+    // dark ink the same way gold does.
+    final Color ink = brand == null
+        ? AppColors.page
+        : AppColors.onCategory(category);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -261,11 +278,9 @@ class CategoryPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
-        TodoCategories.label(category),
+        ref.watch(categorySetProvider(CategoryKind.todo)).label(category),
         style: TextStyle(
-          color: dimmed
-              ? AppColors.textSecondary
-              : AppColors.onCategory(category),
+          color: dimmed ? AppColors.textSecondary : ink,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

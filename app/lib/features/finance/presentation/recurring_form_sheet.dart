@@ -10,6 +10,8 @@ import '../application/recurring_providers.dart';
 import '../application/statement_providers.dart';
 import '../data/recurring_repository.dart';
 import '../domain/finance_accounts.dart';
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/category_set.dart';
 import '../domain/finance_categories.dart';
 import '../domain/finance_transaction.dart';
 import '../domain/recurring_rule.dart';
@@ -63,7 +65,9 @@ class _RecurringFormSheetState extends ConsumerState<RecurringFormSheet> {
       text: initial?.description ?? '',
     );
     _type = initial?.type ?? TransactionType.expense;
-    _category = initial?.category ?? FinanceCategories.defaultFor(_type);
+    // An existing rule keeps its category even if it has since been removed
+    // from the list — the chips below keep the value on offer.
+    _category = initial?.category ?? _defaultCategoryFor(_type);
     _cadence = initial?.cadence ?? Cadence.monthly;
     _startDate = initial?.nextRunAt ?? DateTime.now();
     _account = initial?.account;
@@ -76,9 +80,21 @@ class _RecurringFormSheetState extends ConsumerState<RecurringFormSheet> {
     super.dispose();
   }
 
+  /// The user's list for a transaction type, read without subscribing.
+  CategorySet _setFor(TransactionType type) =>
+      ref.read(categorySetProvider(type.categoryKind));
+
+  /// Falls back to the built-in escape hatch when every category has been
+  /// deleted, so a rule can still be written.
+  String _defaultCategoryFor(TransactionType type) =>
+      _setFor(type).defaultKey ?? FinanceCategories.fallback;
+
   @override
   Widget build(BuildContext context) {
     final DateTime? openFrom = ref.watch(openPeriodStartProvider);
+    final CategorySet categories = ref.watch(
+      categorySetProvider(_type.categoryKind),
+    );
 
     return AppSheetBody(
       formKey: _formKey,
@@ -100,8 +116,8 @@ class _RecurringFormSheetState extends ConsumerState<RecurringFormSheet> {
             _type = t;
             // A category that makes no sense for the new type is reset rather
             // than silently written — `groceries` is not a kind of income.
-            if (!FinanceCategories.isValidFor(_category, t)) {
-              _category = FinanceCategories.defaultFor(t);
+            if (!_setFor(t).contains(_category)) {
+              _category = _defaultCategoryFor(t);
             }
           }),
         ),
@@ -118,9 +134,9 @@ class _RecurringFormSheetState extends ConsumerState<RecurringFormSheet> {
           spacing: 8,
           runSpacing: 8,
           children: <Widget>[
-            for (final String c in FinanceCategories.forType(_type))
+            for (final String c in categories.keysIncluding(_category))
               _Chip(
-                label: FinanceCategories.label(c),
+                label: categories.label(c),
                 selected: _category == c,
                 onTap: () => setState(() => _category = c),
               ),

@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/user_category.dart';
 import '../../auth/application/auth_providers.dart';
 import '../data/todos_repository.dart';
 import '../domain/todo.dart';
@@ -101,7 +103,11 @@ final Provider<Map<String, int>> todoCategoryCountsProvider =
       final List<Todo> todos =
           ref.watch(todosStreamProvider).asData?.value ?? const <Todo>[];
       final TodoStatus? status = ref.watch(todoStatusFilterProvider);
-      return TodoQuery.countsByCategory(todos, status: status);
+      return TodoQuery.countsByCategory(
+        todos,
+        status: status,
+        categories: ref.watch(categorySetProvider(CategoryKind.todo)).keys,
+      );
     });
 
 /// Every task by ID, for resolving a follow-up's parent.

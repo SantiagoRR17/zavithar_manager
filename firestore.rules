@@ -518,10 +518,84 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+      // --- categories (Milestone 4) -----------------------------------------
+      //
+      // The user's own category lists, for transactions and for todos. The
+      // document ID is `kind:key` — the kind has to be in it because `home` is
+      // a plausible expense category *and* one of the todo categories, and one
+      // document cannot be both.
+      //
+      // **The key is immutable and the label is not.** Every transaction and
+      // todo ever written holds the key, and nothing here can rewrite them all,
+      // so renaming a category must only ever change what is displayed. A rule
+      // that let the key change would silently orphan history.
+      //
+      // Note what is *not* enforced: no other collection checks that its
+      // `category` field appears in this one. That is deliberate and matches
+      // the existing `category is string && size() <= 40` on transactions —
+      // enforcing membership would mean a category could not be used until a
+      // rules deploy had landed, and deleting one would retroactively make
+      // every past record that used it unwritable.
+      match /categories/{categoryId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'kind', 'key', 'label', 'sortOrder', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'kind', 'key', 'label', 'sortOrder', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().kind in ['expense', 'income', 'todo']
+              && data().key is string
+              && data().key.size() > 0
+              && data().key.size() <= 40
+              // The ID and the fields must agree, or a document could claim to
+              // be an income category while living among the expense ones and
+              // every screen would disagree about which list it belongs to.
+              && categoryId == data().kind + ':' + data().key
+              && data().label is string
+              && data().label.size() > 0
+              && data().label.size() <= 40
+              && data().sortOrder is int
+              && data().sortOrder >= 0;
+        }
+
+        // The two fields that identify the category never change. Only the
+        // label and the position do.
+        function keepsIdentity() {
+          return data().kind == resource.data.kind
+              && data().key == resource.data.key;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && keepsIdentity()
+                      && (!('createdAt' in data())
+                          || data().createdAt == resource.data.createdAt)
+                      && data().updatedAt == request.time;
+        // Deleting a category removes it from the offer list and nothing else.
+        // The records that used it keep their key and keep displaying it.
+        allow delete: if isOwner();
+      }
+
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
-      // categories and devices. Each graduates to its own validated block as
-      // its milestone lands — though `devices` may never, since ADR 0011
+      // Only `devices` is left here, and it may never graduate: ADR 0011
       // removed the Cloud Function that was going to read the FCM tokens it
       // held, leaving it dead schema.
       //
@@ -538,7 +612,7 @@ service cloud.firestore {
                            && !(collection in [
                                 'transactions', 'savings', 'liabilities',
                                 'todos', 'statements', 'budgets',
-                                'recurring'
+                                'recurring', 'categories'
                               ]);
       }
     }

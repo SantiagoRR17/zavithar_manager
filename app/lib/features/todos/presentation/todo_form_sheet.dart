@@ -7,6 +7,8 @@ import '../../../core/widgets/app_sheet.dart';
 import '../../../core/widgets/optional_date_field.dart';
 import '../application/todo_providers.dart';
 import '../data/todos_repository.dart';
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/user_category.dart';
 import '../domain/todo.dart';
 import 'widgets/todo_tile.dart' show CategoryPill;
 
@@ -67,6 +69,7 @@ class _TodoFormSheetState extends ConsumerState<TodoFormSheet> {
     _category =
         initial?.category ??
         widget.followUpOf?.category ??
+        ref.read(categorySetProvider(CategoryKind.todo)).defaultKey ??
         TodoCategories.fallback;
     _status = initial?.status ?? TodoStatus.pending;
     _priority =
@@ -128,7 +131,10 @@ class _TodoFormSheetState extends ConsumerState<TodoFormSheet> {
           spacing: 8,
           runSpacing: 8,
           children: <Widget>[
-            for (final String c in TodoCategories.all)
+            for (final String c
+                in ref
+                    .watch(categorySetProvider(CategoryKind.todo))
+                    .keysIncluding(_category))
               GestureDetector(
                 onTap: () => setState(() => _category = c),
                 child: Opacity(

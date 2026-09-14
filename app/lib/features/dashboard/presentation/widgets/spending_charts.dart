@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/money.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../finance/domain/finance_categories.dart';
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/user_category.dart';
 import '../../domain/spending_insights.dart';
 
 /// The one colour every data mark in these charts is filled with.
@@ -29,13 +31,13 @@ const Color _markFill = AppColors.brandPrimaryLight;
 /// - Colouring nominal bars by magnitude is an anti-pattern: it double-encodes
 ///   length as hue, spending the only free channel on information the bar
 ///   already shows. Identity here is carried by the label beside each bar.
-class CategorySpendChart extends StatelessWidget {
+class CategorySpendChart extends ConsumerWidget {
   const CategorySpendChart({required this.rows, super.key});
 
   final List<CategorySpend> rows;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (rows.isEmpty) return const SizedBox.shrink();
 
     final num peak = rows.first.amount;
@@ -49,7 +51,14 @@ class CategorySpendChart extends StatelessWidget {
           for (final CategorySpend row in rows)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _CategoryBar(row: row, peak: peak),
+              child: _CategoryBar(
+                row: row,
+                peak: peak,
+                // Expenses only, so one kind — the chart's own title says so.
+                label: ref
+                    .watch(categorySetProvider(CategoryKind.expense))
+                    .label(row.category),
+              ),
             ),
         ],
       ),
@@ -58,10 +67,18 @@ class CategorySpendChart extends StatelessWidget {
 }
 
 class _CategoryBar extends StatelessWidget {
-  const _CategoryBar({required this.row, required this.peak});
+  const _CategoryBar({
+    required this.row,
+    required this.peak,
+    required this.label,
+  });
 
   final CategorySpend row;
   final num peak;
+
+  /// Resolved by the parent, so this stays a plain widget that a test can
+  /// render without a Riverpod container.
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +91,7 @@ class _CategoryBar extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: Text(
-                FinanceCategories.label(row.category),
+                label,
                 style: const TextStyle(
                   // Text wears text tokens, never the mark's colour. The bar
                   // beside it carries the identity.

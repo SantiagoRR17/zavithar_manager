@@ -9,6 +9,8 @@ import '../application/statement_providers.dart';
 import '../application/transaction_providers.dart';
 import '../data/transactions_repository.dart';
 import '../domain/finance_accounts.dart';
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/category_set.dart';
 import '../domain/finance_categories.dart';
 import '../domain/finance_transaction.dart';
 import 'widgets/amount_form_field.dart';
@@ -66,10 +68,10 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
     final FinanceTransaction? initial = widget.initial;
 
     _type = initial?.type ?? TransactionType.expense;
-    _category =
-        initial != null && FinanceCategories.isValidFor(initial.category, _type)
-        ? initial.category
-        : FinanceCategories.defaultFor(_type);
+    // An existing transaction keeps its category even if it has since been
+    // removed from the list — `_categoryField` keeps the value on offer, so
+    // editing the amount cannot silently recategorise the record.
+    _category = initial?.category ?? _defaultCategoryFor(_type);
     // A document can hold an account this build does not offer — written by a
     // later version, or typed into the Firestore console. Selecting it in the
     // dropdown would throw, so an unknown value falls back to the default.
@@ -143,8 +145,8 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
           // `groceries` is not a kind of income. Flipping the type resets the
           // category rather than leaving a nonsense pairing that the user has
           // to notice and fix themselves.
-          if (!FinanceCategories.isValidFor(_category, _type)) {
-            _category = FinanceCategories.defaultFor(_type);
+          if (!_setFor(_type).contains(_category)) {
+            _category = _defaultCategoryFor(_type);
           }
         });
       },
@@ -162,16 +164,31 @@ class _TransactionFormSheetState extends ConsumerState<TransactionFormSheet> {
     );
   }
 
+  /// The user's list for a transaction type, read without subscribing.
+  ///
+  /// `read` rather than `watch` in the callbacks; the build method watches.
+  CategorySet _setFor(TransactionType type) =>
+      ref.read(categorySetProvider(type.categoryKind));
+
+  /// Where a fresh form starts. Falls back to the built-in escape hatch when
+  /// the user has deleted every category, so a transaction can still be
+  /// recorded rather than the form opening with nothing selectable.
+  String _defaultCategoryFor(TransactionType type) =>
+      _setFor(type).defaultKey ?? FinanceCategories.fallback;
+
   Widget _categoryField() {
+    final CategorySet set = ref.watch(categorySetProvider(_type.categoryKind));
+
     return DropdownButtonFormField<String>(
       initialValue: _category,
       decoration: const InputDecoration(labelText: 'Category'),
       dropdownColor: AppColors.surface1,
-      items: FinanceCategories.forType(_type)
+      items: set
+          .keysIncluding(_category)
           .map(
             (String category) => DropdownMenuItem<String>(
               value: category,
-              child: Text(FinanceCategories.label(category)),
+              child: Text(set.label(category)),
             ),
           )
           .toList(),

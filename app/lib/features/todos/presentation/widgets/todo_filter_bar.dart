@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/category_set.dart';
+import '../../../categories/domain/user_category.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../application/todo_providers.dart';
 import '../../domain/todo.dart';
@@ -30,6 +33,10 @@ class TodoFilterBar extends ConsumerWidget {
       todoStatusCountsProvider,
     );
 
+    final CategorySet todoCategories = ref.watch(
+      categorySetProvider(CategoryKind.todo),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -38,9 +45,9 @@ class TodoFilterBar extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: <Widget>[
-              for (final String c in TodoCategories.all) ...<Widget>[
+              for (final String c in todoCategories.keys) ...<Widget>[
                 _FilterChip(
-                  label: TodoCategories.label(c),
+                  label: todoCategories.label(c),
                   count: categoryCounts[c] ?? 0,
                   selected: category == c,
                   // Selected, a category chip wears its own colour — the same

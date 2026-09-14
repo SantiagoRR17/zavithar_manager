@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/user_category.dart';
 import '../../../../core/errors/data_failure.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,7 +10,6 @@ import '../../../../core/widgets/async_states.dart';
 import '../../application/budget_providers.dart';
 import '../../data/budgets_repository.dart';
 import '../../domain/budget.dart';
-import '../../domain/finance_categories.dart';
 import '../budget_form_sheet.dart';
 
 /// Monthly spending caps, measured against what has actually been spent.
@@ -95,7 +96,8 @@ class _BudgetList extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              '${FinanceCategories.label(budget.category)} budget removed.',
+              '${ref.read(categorySetProvider(CategoryKind.expense)).label(budget.category)} '
+              'budget removed.',
             ),
             action: SnackBarAction(
               label: 'Undo',
@@ -176,13 +178,13 @@ class _MonthHeader extends StatelessWidget {
   }
 }
 
-class _BudgetCard extends StatelessWidget {
+class _BudgetCard extends ConsumerWidget {
   const _BudgetCard({required this.status});
 
   final BudgetStatus status;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Three states, and the middle one is the whole point of the feature:
     // within budget but spending faster than the month is passing. A plain
     // percentage cannot say that, and by the time the bar is full it is too
@@ -220,7 +222,9 @@ class _BudgetCard extends StatelessWidget {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      FinanceCategories.label(status.category),
+                      ref
+                          .watch(categorySetProvider(CategoryKind.expense))
+                          .label(status.category),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 15,

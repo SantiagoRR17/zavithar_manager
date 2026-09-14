@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/category_set.dart';
+import '../../categories/domain/user_category.dart';
 import '../../../core/errors/data_failure.dart';
 import '../../../core/format/money.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../application/statement_providers.dart';
 import '../data/statements_repository.dart';
-import '../domain/finance_categories.dart';
 import '../domain/monthly_statement.dart';
 
 /// The statement, in full: totals, category breakdown, and the two actions a
@@ -100,13 +102,21 @@ class _StatementDetailSheetState extends ConsumerState<StatementDetailSheet> {
                 const SizedBox(height: 20),
                 const _Heading('Where it went'),
                 const SizedBox(height: 6),
-                ..._breakdown(s.expenseByCategory, s.totalExpense),
+                ..._breakdown(
+                  s.expenseByCategory,
+                  s.totalExpense,
+                  CategoryKind.expense,
+                ),
               ],
               if (s.incomeByCategory.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 20),
                 const _Heading('Where it came from'),
                 const SizedBox(height: 6),
-                ..._breakdown(s.incomeByCategory, s.totalIncome),
+                ..._breakdown(
+                  s.incomeByCategory,
+                  s.totalIncome,
+                  CategoryKind.income,
+                ),
               ],
 
               const SizedBox(height: 22),
@@ -153,7 +163,15 @@ class _StatementDetailSheetState extends ConsumerState<StatementDetailSheet> {
   /// Sorted by amount rather than by the fixed category order used elsewhere:
   /// the question a statement answers is "what did the money go on", and that
   /// is a ranking, not a list.
-  List<Widget> _breakdown(Map<String, num> byCategory, num total) {
+  List<Widget> _breakdown(
+    Map<String, num> byCategory,
+    num total,
+    CategoryKind kind,
+  ) {
+    // A statement is a frozen record, but the *names* on it are not: renaming
+    // a category renames it here too, because the key it was filed under has
+    // not changed.
+    final CategorySet categories = ref.watch(categorySetProvider(kind));
     final List<MapEntry<String, num>> entries = byCategory.entries.toList()
       ..sort(
         (MapEntry<String, num> a, MapEntry<String, num> b) =>
@@ -168,7 +186,7 @@ class _StatementDetailSheetState extends ConsumerState<StatementDetailSheet> {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  FinanceCategories.label(e.key),
+                  categories.label(e.key),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,

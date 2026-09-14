@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/categories/presentation/categories_screen.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -24,6 +25,10 @@ abstract final class AppRoutes {
   static const String finance = '/finance';
   static const String todos = '/todos';
   static const String settings = '/settings';
+
+  /// A child of [settings], so it pushes over the settings tab and keeps the
+  /// bottom navigation bar rather than covering it.
+  static const String categories = 'categories';
 }
 
 /// Builds the app's [GoRouter], including the auth gate.
@@ -136,6 +141,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                 path: AppRoutes.settings,
                 builder: (BuildContext context, GoRouterState state) =>
                     const SettingsScreen(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: AppRoutes.categories,
+                    builder: (BuildContext context, GoRouterState state) =>
+                        const CategoriesScreen(),
+                  ),
+                ],
               ),
             ],
           ),

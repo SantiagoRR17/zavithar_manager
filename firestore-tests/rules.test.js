@@ -529,3 +529,188 @@ describe('savings and liabilities', () => {
     );
   });
 });
+
+describe('categories (Milestone 4)', () => {
+  const validCategory = (overrides = {}) => ({
+    kind: 'expense',
+    key: 'groceries',
+    label: 'Groceries',
+    sortOrder: 100,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  });
+
+  it('accepts a well-formed category', async () => {
+    await assertSucceeds(
+      setDoc(doc(owner, path('categories', 'expense:groceries')), validCategory()),
+    );
+  });
+
+  it('accepts a todo category under the same key as an expense one', async () => {
+    // `home` is both a plausible expense category and one of the four todo
+    // categories. The kind in the ID is what lets both exist.
+    await assertSucceeds(
+      setDoc(
+        doc(owner, path('categories', 'expense:home')),
+        validCategory({ key: 'home', label: 'Home' }),
+      ),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(owner, path('categories', 'todo:home')),
+        validCategory({ kind: 'todo', key: 'home', label: 'Home' }),
+      ),
+    );
+  });
+
+  it('REFUSES a document whose ID disagrees with its fields', async () => {
+    // Otherwise a document could claim to be an income category while living
+    // among the expense ones, and every screen would disagree about which list
+    // it belongs to.
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:rent')),
+        validCategory({ kind: 'income', key: 'rent' }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:rent')),
+        validCategory({ key: 'mortgage' }),
+      ),
+    );
+  });
+
+  it('REFUSES an unknown kind', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'project:thing')),
+        validCategory({ kind: 'project', key: 'thing' }),
+      ),
+    );
+  });
+
+  it('REFUSES an empty or oversized label', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:blank')),
+        validCategory({ key: 'blank', label: '' }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:long')),
+        validCategory({ key: 'long', label: 'x'.repeat(41) }),
+      ),
+    );
+  });
+
+  it('REFUSES a negative or non-integer sort order', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:neg')),
+        validCategory({ key: 'neg', sortOrder: -1 }),
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:frac')),
+        validCategory({ key: 'frac', sortOrder: 1.5 }),
+      ),
+    );
+  });
+
+  it('REFUSES an unknown field', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:extra')),
+        validCategory({ key: 'extra', colour: '#ff0000' }),
+      ),
+    );
+  });
+
+  it('REFUSES a backdated createdAt', async () => {
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:back')),
+        validCategory({ key: 'back', createdAt: Timestamp.fromMillis(0) }),
+      ),
+    );
+  });
+
+  it('accepts a rename', async () => {
+    await assertSucceeds(
+      updateDoc(doc(owner, path('categories', 'expense:groceries')), {
+        label: 'Mercado',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('accepts a reorder', async () => {
+    await assertSucceeds(
+      updateDoc(doc(owner, path('categories', 'expense:groceries')), {
+        sortOrder: 250,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('**REFUSES changing the key**', async () => {
+    // The property this whole design rests on. Every transaction ever written
+    // holds the key, and nothing server-side can rewrite them — so a key that
+    // could change would silently orphan history.
+    await assertFails(
+      updateDoc(doc(owner, path('categories', 'expense:groceries')), {
+        key: 'mercado',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('REFUSES changing the kind', async () => {
+    await assertFails(
+      updateDoc(doc(owner, path('categories', 'expense:groceries')), {
+        kind: 'income',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('REFUSES rewriting createdAt', async () => {
+    await assertFails(
+      updateDoc(doc(owner, path('categories', 'expense:groceries')), {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('accepts deleting a category', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(owner, path('categories', 'expense:home'))),
+    );
+  });
+
+  it('REFUSES a stranger entirely', async () => {
+    await assertFails(
+      getDoc(doc(stranger, path('categories', 'expense:groceries'))),
+    );
+    await assertFails(
+      setDoc(doc(stranger, path('categories', 'expense:x')), validCategory({ key: 'x' })),
+    );
+  });
+
+  it('**REFUSES an invalid category even though the catch-all matches it**', async () => {
+    // The regression guard for the OR-ing gotcha. `categories` is a known
+    // collection, so `match /{collection}/{docId}` also matches this path; if
+    // it were not excluded there, every check above would pass by accident.
+    await assertFails(
+      setDoc(
+        doc(owner, path('categories', 'expense:junk')),
+        { anything: 'at all' },
+      ),
+    );
+  });
+});

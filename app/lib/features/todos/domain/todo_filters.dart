@@ -115,18 +115,21 @@ abstract final class TodoQuery {
 
   /// How many tasks sit in each category, over the *status-filtered* list —
   /// the mirror of [countsByStatus], for the same reason.
+  /// [categories] is the user's own list; it defaults to the built-in four so
+  /// this stays callable from a plain test without a Riverpod container.
   static Map<String, int> countsByCategory(
     List<Todo> todos, {
     TodoStatus? status,
+    List<String>? categories,
   }) {
     final Map<String, int> counts = <String, int>{
-      for (final String c in TodoCategories.all) c: 0,
+      for (final String c in categories ?? TodoCategories.all) c: 0,
     };
     for (final Todo todo in todos) {
       if (status != null && todo.status != status) continue;
-      // A category that is not in the fixed four — possible from the console,
-      // or from a future user-editable list — is counted only if it is known,
-      // rather than crashing on a missing key.
+      // A category the list no longer offers — one the user removed, or one
+      // typed into the console — is counted only if it is known, rather than
+      // crashing on a missing key. There is no chip to show its count on.
       if (counts.containsKey(todo.category)) {
         counts[todo.category] = counts[todo.category]! + 1;
       }

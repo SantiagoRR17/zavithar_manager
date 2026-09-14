@@ -7,8 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_sheet.dart';
 import '../application/budget_providers.dart';
 import '../data/budgets_repository.dart';
+import '../../categories/application/category_providers.dart';
+import '../../categories/domain/category_set.dart';
+import '../../categories/domain/user_category.dart';
 import '../domain/budget.dart';
-import '../domain/finance_categories.dart';
 import 'widgets/amount_form_field.dart';
 
 /// Set or change a monthly limit. Pass [initial] to edit.
@@ -69,8 +71,14 @@ class _BudgetFormSheetState extends ConsumerState<BudgetFormSheet> {
             .toSet() ??
         <String>{};
 
+    // `keysIncluding` keeps the budget being edited on the list even when its
+    // category has since been removed — otherwise editing the limit on an old
+    // budget would have nothing selected.
+    final CategorySet categories = ref.watch(
+      categorySetProvider(CategoryKind.expense),
+    );
     final List<String> available = <String>[
-      for (final String c in FinanceCategories.expense)
+      for (final String c in categories.keysIncluding(widget.initial?.category))
         if (!taken.contains(c) || c == widget.initial?.category) c,
     ];
 
@@ -118,7 +126,7 @@ class _BudgetFormSheetState extends ConsumerState<BudgetFormSheet> {
             children: <Widget>[
               for (final String c in available)
                 _CategoryChip(
-                  label: FinanceCategories.label(c),
+                  label: categories.label(c),
                   // Editing pins the category: changing it would mean deleting
                   // one budget and creating another, which is not what "edit"
                   // means to anyone.

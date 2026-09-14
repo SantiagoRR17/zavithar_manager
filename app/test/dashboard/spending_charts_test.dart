@@ -6,6 +6,7 @@
 // fail on any overflow, which is how a chart breaks in practice.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zavithar_manager/features/dashboard/domain/spending_insights.dart';
 import 'package:zavithar_manager/features/dashboard/presentation/widgets/spending_charts.dart';
@@ -17,12 +18,17 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
+    // The category chart resolves its labels from the user's own list, so it
+    // needs a container. With nothing stored it falls back to the built-in
+    // defaults, which is exactly the state these tests assert against.
     return tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: child,
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: child,
+            ),
           ),
         ),
       ),
