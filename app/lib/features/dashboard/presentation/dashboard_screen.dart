@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/format/money.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../finance/application/budget_providers.dart';
+import '../../finance/domain/budget.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/finance_summary.dart';
+import '../domain/spending_insights.dart';
+import 'widgets/spending_charts.dart';
 import 'widgets/stat_tile.dart';
 
 /// The landing screen after sign-in: the state of the money, at a glance.
@@ -74,6 +78,8 @@ class _DashboardBody extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         _NetRow(net: data.monthNet),
+        const SizedBox(height: 12),
+        const _BudgetRow(),
         const SizedBox(height: 20),
         const _SectionLabel('Goals and debts'),
         const SizedBox(height: 10),
@@ -112,6 +118,8 @@ class _DashboardBody extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 20),
+        const _Charts(),
       ],
     );
   }
@@ -253,6 +261,103 @@ class _NetRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The two charts, below the tiles.
+///
+/// On the dashboard rather than behind a tab because they answer the question
+/// the dashboard exists for — "how am I doing" — better than a grid of numbers
+/// does. Each hides itself when there is nothing to plot, so a new account sees
+/// tiles and no empty frames.
+class _Charts extends ConsumerWidget {
+  const _Charts();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<CategorySpend> categories = ref.watch(categorySpendProvider);
+    final List<MonthlyTotals> months = ref.watch(monthlyTotalsProvider);
+
+    return Column(
+      children: <Widget>[
+        if (categories.isNotEmpty) CategorySpendChart(rows: categories),
+        if (categories.isNotEmpty && months.length >= 2)
+          const SizedBox(height: 12),
+        if (months.length >= 2) MonthlyNetChart(series: months),
+      ],
+    );
+  }
+}
+
+/// A one-line verdict on the month's budgets, under the income/expense pair.
+///
+/// Deliberately a single line rather than a tile per budget: the dashboard's
+/// job is to say whether anything needs attention, and the Budgets tab is
+/// where the detail lives. A row of five bars here would be a worse version of
+/// that screen competing with the numbers around it.
+class _BudgetRow extends ConsumerWidget {
+  const _BudgetRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<BudgetStatus> statuses = ref.watch(budgetStatusProvider);
+    if (statuses.isEmpty) return const SizedBox.shrink();
+
+    final int over = BudgetReport.overCount(statuses);
+    final int ahead = statuses
+        .where((BudgetStatus s) => !s.isOver && !s.isOnTrack)
+        .length;
+
+    // Three states, worst first — the same ordering the tab itself uses, so
+    // the two screens never disagree about which one matters.
+    final (Color tone, IconData icon, String label) = over > 0
+        ? (
+            AppColors.statusCritical,
+            Icons.error_outline,
+            '$over of ${statuses.length} budget${statuses.length == 1 ? '' : 's'} over',
+          )
+        : ahead > 0
+        ? (AppColors.statusWarning, Icons.trending_up, '$ahead ahead of pace')
+        : (
+            AppColors.statusGood,
+            Icons.check_circle_outline,
+            'All ${statuses.length} budget${statuses.length == 1 ? '' : 's'} on track',
+          );
+
+    return Material(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => context.go(AppRoutes.finance),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 16, color: tone),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Budgets',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: tone,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

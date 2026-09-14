@@ -9,6 +9,7 @@ import '../../application/transaction_providers.dart';
 import '../../data/transactions_repository.dart';
 import '../../domain/finance_transaction.dart';
 import '../../domain/statement_period.dart';
+import '../tabs/recurring_tab.dart' show PendingRecurrenceCard;
 import '../transaction_form_sheet.dart';
 import '../widgets/transaction_tile.dart';
 
@@ -68,7 +69,18 @@ class TransactionsTab extends ConsumerWidget {
                   'device you are signed in on, within seconds.',
             );
           }
-          return _TransactionList(items: items);
+          // The pending-recurrence card appears here as well as on its own
+          // tab: this is the screen where a missing rent charge is actually
+          // noticed, and a tab nobody opens is a poor place to put a prompt.
+          return Column(
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: PendingRecurrenceCard(),
+              ),
+              Expanded(child: _TransactionList(items: items)),
+            ],
+          );
         },
       ),
     );

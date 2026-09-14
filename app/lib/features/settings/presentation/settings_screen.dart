@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+
+import 'package:go_router/go_router.dart';
+
+import '../../../core/router/app_router.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../backup/presentation/backup_card.dart';
 import '../../notifications/presentation/reminder_settings_card.dart';
@@ -56,6 +60,8 @@ class SettingsScreen extends ConsumerWidget {
               const ReminderSettingsCard(),
               const SizedBox(height: 16),
               const BackupCard(),
+              const SizedBox(height: 16),
+              const _CategoriesCard(),
               const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () => _confirmSignOut(context, ref),
@@ -65,7 +71,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               const Center(
                 child: Text(
-                  'Zavithar Manager · Milestone 3',
+                  'Zavithar Manager · Milestone 4',
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ),
@@ -163,6 +169,40 @@ class _AccountCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The way into the category editor.
+///
+/// A row in Settings rather than a control inside the pickers: editing the list
+/// is rare and deliberate, and putting "delete this category" one mis-tap from
+/// "record this expense" would be a trap.
+class _CategoriesCard extends StatelessWidget {
+  const _CategoriesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gridline),
+      ),
+      child: ListTile(
+        leading: const Icon(
+          Icons.label_outline,
+          color: AppColors.textSecondary,
+        ),
+        title: const Text('Categories'),
+        subtitle: const Text(
+          'Rename, reorder, add or remove the lists you choose from',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+        onTap: () =>
+            context.go('${AppRoutes.settings}/${AppRoutes.categories}'),
       ),
     );
   }

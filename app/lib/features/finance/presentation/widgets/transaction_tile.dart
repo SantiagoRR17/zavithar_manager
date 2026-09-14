@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../categories/application/category_providers.dart';
+import '../../../categories/domain/category_set.dart';
 import '../../../../core/format/money.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/finance_accounts.dart';
-import '../../domain/finance_categories.dart';
 import '../../domain/finance_transaction.dart';
 
 /// One row in the transaction list.
@@ -13,14 +15,17 @@ import '../../domain/finance_transaction.dart';
 /// never the only signal (`CLAUDE.md` → Brand & UI tokens) — so this row still
 /// reads correctly in greyscale, and to someone who cannot separate the green
 /// from the white.
-class TransactionTile extends StatelessWidget {
+class TransactionTile extends ConsumerWidget {
   const TransactionTile({required this.transaction, this.onTap, super.key});
 
   final FinanceTransaction transaction;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final CategorySet categories = ref.watch(
+      categorySetProvider(transaction.type.categoryKind),
+    );
     final bool isIncome = transaction.type.isIncome;
     // The same two colours as the arrow avatar, so the icon and the number on
     // one row agree. Expense uses the *brand* red rather than
@@ -39,9 +44,7 @@ class TransactionTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: _TypeAvatar(isIncome: isIncome),
       title: Text(
-        hasDescription
-            ? description
-            : FinanceCategories.label(transaction.category),
+        hasDescription ? description : categories.label(transaction.category),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
@@ -56,7 +59,7 @@ class TransactionTile extends StatelessWidget {
           // showing a description instead — otherwise the row would say
           // "Groceries / Groceries · Cash".
           <String>[
-            if (hasDescription) FinanceCategories.label(transaction.category),
+            if (hasDescription) categories.label(transaction.category),
             FinanceAccounts.label(transaction.account),
             AppDates.relativeDay(transaction.date),
           ].join(' · '),

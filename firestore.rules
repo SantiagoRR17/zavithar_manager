@@ -29,6 +29,8 @@ service cloud.firestore {
           'liabilities',
           'todos',
           'statements',
+          'budgets',
+          'recurring',
           'categories',
           'devices'
         ];
@@ -402,10 +404,198 @@ service cloud.firestore {
         allow delete: if isOwner();
       }
 
+
+      // --- budgets (Milestone 4) --------------------------------------------
+      //
+      // The document ID is the category, which is what makes a second budget
+      // for the same category impossible to create rather than merely
+      // discouraged. The `category` field is a readable copy of the ID, and the
+      // rules insist the two agree — otherwise a document could claim to budget
+      // `rent` while living under `groceries`, and every screen would disagree
+      // about which one it was.
+      match /budgets/{category} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'category', 'monthlyLimit', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll(['category', 'monthlyLimit', 'updatedAt']);
+        }
+
+        function hasValidFields() {
+          return data().category is string
+              && data().category == category
+              && data().monthlyLimit is number
+              // A limit of zero is not a budget, it is a ban, and nothing here
+              // could enforce one.
+              && data().monthlyLimit > 0;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        // `createdAt` is absent from an update's payload and preserved by the
+        // merge, so — unlike the other collections — it is compared only when
+        // it is actually present.
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && (!('createdAt' in data())
+                          || data().createdAt == resource.data.createdAt)
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
+
+      // --- recurring (Milestone 4) ------------------------------------------
+      //
+      // A template plus a schedule. It never moves money: it produces ordinary
+      // documents in `transactions`, which carry their own validation — so the
+      // rules here guard the *template*, and the occurrences it creates are
+      // checked by the transaction rules like anything else. That includes the
+      // closed-month guard, which is why an occurrence falling in a closed
+      // month is refused rather than quietly written on a different day.
+      match /recurring/{ruleId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'amount', 'type', 'category', 'description', 'account',
+            'cadence', 'anchorDay', 'nextRunAt', 'lastRunAt', 'active',
+            'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'amount', 'type', 'category', 'cadence', 'anchorDay',
+            'nextRunAt', 'active', 'createdAt', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().amount is number
+              && data().amount > 0
+              && data().type in ['income', 'expense']
+              && data().category is string
+              && data().category.size() >= 1
+              && data().category.size() <= 40
+              && data().cadence in ['weekly', 'monthly', 'yearly']
+              // 1-31 covers a day of the month; a weekly rule uses 1-7 for the
+              // weekday, which this range already contains.
+              && data().anchorDay is int
+              && data().anchorDay >= 1
+              && data().anchorDay <= 31
+              && data().nextRunAt is timestamp
+              && data().active is bool
+              && (!('lastRunAt' in data()) || data().lastRunAt is timestamp)
+              && (!('description' in data())
+                  || (data().description is string
+                      && data().description.size() <= 200))
+              && (!('account' in data())
+                  || (data().account is string
+                      && data().account.size() <= 40));
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == resource.data.createdAt
+                      && data().updatedAt == request.time;
+        allow delete: if isOwner();
+      }
+
+      // --- categories (Milestone 4) -----------------------------------------
+      //
+      // The user's own category lists, for transactions and for todos. The
+      // document ID is `kind:key` — the kind has to be in it because `home` is
+      // a plausible expense category *and* one of the todo categories, and one
+      // document cannot be both.
+      //
+      // **The key is immutable and the label is not.** Every transaction and
+      // todo ever written holds the key, and nothing here can rewrite them all,
+      // so renaming a category must only ever change what is displayed. A rule
+      // that let the key change would silently orphan history.
+      //
+      // Note what is *not* enforced: no other collection checks that its
+      // `category` field appears in this one. That is deliberate and matches
+      // the existing `category is string && size() <= 40` on transactions —
+      // enforcing membership would mean a category could not be used until a
+      // rules deploy had landed, and deleting one would retroactively make
+      // every past record that used it unwritable.
+      match /categories/{categoryId} {
+
+        function data() {
+          return request.resource.data;
+        }
+
+        function hasOnlyKnownKeys() {
+          return data().keys().hasOnly([
+            'kind', 'key', 'label', 'sortOrder', 'createdAt', 'updatedAt'
+          ])
+          && data().keys().hasAll([
+            'kind', 'key', 'label', 'sortOrder', 'updatedAt'
+          ]);
+        }
+
+        function hasValidFields() {
+          return data().kind in ['expense', 'income', 'todo']
+              && data().key is string
+              && data().key.size() > 0
+              && data().key.size() <= 40
+              // The ID and the fields must agree, or a document could claim to
+              // be an income category while living among the expense ones and
+              // every screen would disagree about which list it belongs to.
+              && categoryId == data().kind + ':' + data().key
+              && data().label is string
+              && data().label.size() > 0
+              && data().label.size() <= 40
+              && data().sortOrder is int
+              && data().sortOrder >= 0;
+        }
+
+        // The two fields that identify the category never change. Only the
+        // label and the position do.
+        function keepsIdentity() {
+          return data().kind == resource.data.kind
+              && data().key == resource.data.key;
+        }
+
+        allow read: if isOwner();
+        allow create: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && data().createdAt == request.time
+                      && data().updatedAt == request.time;
+        allow update: if isOwner()
+                      && hasOnlyKnownKeys()
+                      && hasValidFields()
+                      && keepsIdentity()
+                      && (!('createdAt' in data())
+                          || data().createdAt == resource.data.createdAt)
+                      && data().updatedAt == request.time;
+        // Deleting a category removes it from the offer list and nothing else.
+        // The records that used it keep their key and keep displaying it.
+        allow delete: if isOwner();
+      }
+
+
       // --- everything else: Milestone 0 ownership baseline -----------------
       //
-      // categories and devices. Each graduates to its own validated block as
-      // its milestone lands — though `devices` may never, since ADR 0011
+      // Only `devices` is left here, and it may never graduate: ADR 0011
       // removed the Cloud Function that was going to read the FCM tokens it
       // held, leaving it dead schema.
       //
@@ -421,7 +611,8 @@ service cloud.firestore {
                            && isKnownCollection(collection)
                            && !(collection in [
                                 'transactions', 'savings', 'liabilities',
-                                'todos', 'statements'
+                                'todos', 'statements', 'budgets',
+                                'recurring', 'categories'
                               ]);
       }
     }

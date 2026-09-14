@@ -65,10 +65,16 @@ abstract final class ReminderPlan {
   /// The reminders that should be registered right now.
   ///
   /// Ordered soonest first, so the cap keeps the right ones.
+  ///
+  /// [categoryLabel] resolves the user's own name for a category, for the
+  /// bodies that fall back to it. A plain function rather than the provider,
+  /// so this stays pure and testable — and so it defaults to capitalising the
+  /// key when nothing is passed.
   static List<ScheduledReminder> from(
     List<Todo> todos, {
     DateTime? now,
     int limit = maxScheduled,
+    String Function(String key)? categoryLabel,
   }) {
     final DateTime reference = now ?? DateTime.now();
 
@@ -96,7 +102,7 @@ abstract final class ReminderPlan {
               id: notificationIdFor(t.id),
               todoId: t.id,
               title: t.title,
-              body: bodyFor(t),
+              body: bodyFor(t, categoryLabel: categoryLabel),
               at: t.reminderAt!,
             ),
           ),
@@ -108,9 +114,14 @@ abstract final class ReminderPlan {
   /// The deadline if there is one, because "due today" is the part that decides
   /// whether the notification gets acted on or swiped away; otherwise the
   /// category, so the reminder still says what kind of thing it is.
-  static String bodyFor(Todo todo) {
+  static String bodyFor(
+    Todo todo, {
+    String Function(String key)? categoryLabel,
+  }) {
     final DateTime? deadline = todo.deadline;
-    if (deadline == null) return TodoCategories.label(todo.category);
+    if (deadline == null) {
+      return (categoryLabel ?? TodoCategories.label)(todo.category);
+    }
 
     final DateTime day = DateTime(deadline.year, deadline.month, deadline.day);
     final DateTime today = DateTime(

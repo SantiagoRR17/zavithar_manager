@@ -64,7 +64,16 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
    - **Past reminders are dropped, never scheduled** — firing immediately would dump a week of stale reminders into the shade after a holiday.
    - `users/{uid}/devices/{id}` is dead schema (it only ever held FCM tokens).
 
-4. **Polish** — recurring transactions, budgets, charts, editable categories, CSV export, dark mode refinements.
+4. **Polish** — ✅ **Done** on `milestone-4-polish`. Recurring transactions, budgets, charts, editable categories, CSV export (shipped early, inside the backup card) and dark mode refinements.
+   - **Contrast is computed, never eyeballed** (`test/theme/contrast_test.dart`). Two failures had been sitting in the app looking fine: white on the four category colours measured 3.07–3.88:1 where an 11px pill label needs 4.5:1 — only the gold had ever been fixed, because it was the only one that *looked* wrong — and Material's default selected-segment fill left white at 3.49:1. `onCategory` now returns dark ink for every category, and `segmentedButtonTheme` puts the selected fill on `brandPrimary` (6.91:1), matching the nav indicator. On a dark screen a saturated fill reads as "vivid" long after its label has stopped being legible.
+   - **The rules exclusion list now reads `transactions`, `savings`, `liabilities`, `todos`, `statements`, `budgets`, `recurring`, `categories`.** Every new collection with a validated block must be added, or the catch-all waves its writes through. There is a test per collection that writes junk to it and asserts the refusal — the only way to notice this mistake.
+   - **Recurrence is a manual button, never automatic.** Two devices launching minutes apart would each decide the same rent was owed. `RecurrenceSchedule.advance` returns to the stored `anchorDay` after a clamp, or a 31st rule walks permanently earlier through February and never comes back.
+   - **Categories: an empty `categories` collection means the defaults, not an empty picker.** That is the whole reason this needed no migration — an install that never opens the editor reads no documents. The defaults are written down only on the first edit of a kind.
+   - **A category's `key` is immutable and its `label` is not.** Every transaction and todo holds the key and nothing server-side can rewrite them, so renaming changes display only. The rules enforce it. The document ID is `kind:key` because `home` is both a plausible expense category and one of the todo categories.
+   - **A picker keeps the selected value even when it is no longer offered** (`CategorySet.keysIncluding`). Without it, opening an old transaction to fix its amount would reset the selection and silently recategorise it on save.
+   - **A fifth todo category gets the muted tone, not a generated hue** — the four category colours are fixed (see Brand & UI tokens), so it leans on its label. The same answer the dataviz skill gives for a ninth series.
+   - **Charts: `brandPrimary` fails as a data fill.** The palette validator measures it at 2.52:1 against `surface-1`, below the 3:1 a solid fill needs — invisible by eye on a dark screen, where a dark red on near-black just looks moody. Use `brandPrimaryLight` (5.3:1). `statusGood` and `brandPrimaryLight` are ΔE 5.7 under deuteranopia, so **direction carries polarity and colour only repeats it**.
+   - **The validator checks colour, not geometry.** Two chart bugs got through it and were found only by building the APK and looking: bars given an equal share of the width become saturated blocks when there are few of them (capped at 26px), and an axis split evenly around zero wastes half the frame. Both now have widget tests that measure rendered bar heights.
 
 Full task breakdown for each milestone is in `development-plan.md` in the Project.
 
@@ -76,7 +85,9 @@ users/{uid}/savings/{id}        — name, targetAmount, currentAmount, deadline?
 users/{uid}/liabilities/{id}    — name, type, originalAmount, remainingAmount, interestRate?, dueDate?, minimumPayment?
 users/{uid}/todos/{id}          — title, notes?, category, status, deadline?, reminderAt?, followUpOf?, priority?, timestamps
 users/{uid}/statements/{YYYY-MM} — periodStart/End, totalIncome, totalExpense, openingBalance, closingBalance, transactionCount, incomeByCategory, expenseByCategory, closedAt
-users/{uid}/categories/{id}     — optional, if categories become user-editable
+users/{uid}/budgets/{category}  — category (== the doc ID), monthlyLimit, timestamps
+users/{uid}/recurring/{id}      — amount, type, category, cadence, anchorDay, nextRunAt, active, description?, account?
+users/{uid}/categories/{kind:key} — kind (expense|income|todo), key (immutable), label, sortOrder, timestamps
 users/{uid}/devices/{id}        — fcmToken, platform, lastSeenAt
 ```
 
@@ -109,7 +120,7 @@ status — serious:     #ec835a
 status — critical:    #e66767
 ```
 
-Status colors always pair with an icon or text label, never color alone. Category colors follow a fixed order — don't reassign or cycle them.
+Status colors always pair with an icon or text label, never color alone. Category colors follow a fixed order — don't reassign or cycle them. **A user-added todo category beyond the four gets `muted`, with dark ink on it** — never a fifth invented hue.
 
 **Logo:** not decided yet. Several directions were explored (geometric badge, abstract sync/growth/gem symbols, hand-drawn "meteor crack" and "rune blade" Z letterforms) and none landed. Current mockups use a plain text wordmark. Revisit when there's appetite to iterate again — don't block development on it.
 
