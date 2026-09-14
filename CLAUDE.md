@@ -29,15 +29,21 @@ Single owner/user: Zavithar. No multi-user/sharing in v1. (The owner's Google ac
 | 1. Requirements & docs | Done |
 | 2. Mockups | Done (interactive HTML prototype, dark theme, red brand accent) — logo mark still **undecided**, mockups use plain text branding for now |
 | 3. Data model | Done |
-| 4. Development | Milestones 0–3 **done and verified on a device** (2026-09-13), plus monthly statements (ADR 0012) and a signed release build in daily use. Windows build still deferred |
+| 4. Development | **Complete.** Milestones 0–4 done and verified on a device (2026-09-13), plus monthly statements (ADR 0012) and a signed release build in daily use. Windows build still deferred |
 | 5. Testing | Plan written, not yet executed |
 | 6. Deployment | Plan written, not yet executed |
 | 7. Maintenance | Plan written, ongoing once live |
 
 ## Development milestones (execution order)
 
+> **All five are done as of 2026-09-13.** What remains is not feature work:
+> the ADR 0010 hardening (API key restriction, App Check), FR-6 transaction
+> filters, the Windows build, and the logo. Read the milestone notes below for
+> the constraints each one settled — they are the reason the code looks the way
+> it does, and re-deciding them is how a session wastes an afternoon.
+
 0. **Scaffolding** — ✅ **Done on Android, 2026-08-23.** Firebase project live (Firestore + Auth, rules deployed), Flutter project targeting Android + Windows, Riverpod/go_router app shell with a redirect-based auth gate. Two recorded departures from the original plan: `firebase_messaging` deferred to Milestone 3 (`docs/adr/0006`), and the Windows build deferred (`docs/adr/0005`) — so the "both platforms" half of the done-when is still outstanding. See `docs/devlog/2026-08-23.md`.
-1. **Financial manager** — transactions/savings/liabilities CRUD wired to real-time Firestore streams, dashboard stat tiles. **Done when:** a change on one device appears on the other within seconds.
+1. **Financial manager** — ✅ **Done, done-when met 2026-09-13.** Transactions/savings/liabilities CRUD wired to real-time Firestore streams, plus dashboard stat tiles. The done-when — *a change on one device appears on the other within seconds* — was confirmed by the owner: writes made from one client show up on the phone without any manual refresh. Two signed-in clients, one live dataset, which is the requirement everything else is designed around.
    - Transactions, savings goals and liabilities ✅ (2026-08-25) — all three collections live, in a three-tab Finance screen. The four-file shape to copy for todos: `domain/` model → `data/` repository → `application/` providers → `presentation/` screen. See `docs/devlog/2026-08-25.md` and `docs/learning/05-firestore-repositories-and-streams.md`.
    - Dashboard stat tiles ✅ (2026-09-13) — balance, this month's income/expense/net, savings and debt progress. **All derived, never stored**, and folded from the *same* three streams the Finance tab watches, so both screens alive still means three Firestore listeners rather than six. See `docs/devlog/2026-09-13.md`.
    - **When folding several `AsyncValue`s, check error before loading.** A stream refused by a rule stays in the error state forever while a slow sibling is still loading, so a loading-first branch wins every frame and spins for ever instead of reporting the real failure. Render on `hasValue`, not `!isLoading` — a refreshing stream is both.
