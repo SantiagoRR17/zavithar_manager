@@ -38,9 +38,13 @@ void main() {
       expect(values.length, AppColors.categoryColors.length);
     });
 
-    test('study uses dark text because gold is too light for white', () {
-      expect(AppColors.onCategory('study'), AppColors.page);
-      expect(AppColors.onCategory('work'), AppColors.textPrimary);
+    test('every category takes dark ink', () {
+      // It used to be gold only. Measuring the other three showed white
+      // failing on all of them — see `test/theme/contrast_test.dart`, which
+      // computes the ratios rather than asserting the colours by hand.
+      for (final String category in AppColors.categoryOrder) {
+        expect(AppColors.onCategory(category), AppColors.page);
+      }
     });
   });
 }

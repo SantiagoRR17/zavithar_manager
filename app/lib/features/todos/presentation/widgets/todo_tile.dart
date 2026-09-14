@@ -247,7 +247,8 @@ class _MetaChip extends StatelessWidget {
 /// on both. [AppColors.onCategory] picks the text colour, because gold is light
 /// enough that white on it fails contrast.
 ///
-/// **A category the brand has no colour for falls back to the muted tone.**
+/// **A category the brand has no colour for falls back to the muted tone**,
+/// which takes the same dark ink [AppColors.onCategory] gives every category.
 /// The four category colours are fixed and never reassigned or cycled
 /// (`CLAUDE.md` → Brand & UI tokens), so a fifth user-added todo category does
 /// not get a generated hue — it gets the neutral one and leans on its label,
@@ -263,13 +264,8 @@ class CategoryPill extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Color? brand = AppColors.categoryColors[category];
-    final Color background = brand ?? AppColors.muted;
-    // White on the muted grey measures about 2.6:1, so the fallback takes the
-    // dark ink the same way gold does.
-    final Color ink = brand == null
-        ? AppColors.page
-        : AppColors.onCategory(category);
+    final Color background =
+        AppColors.categoryColors[category] ?? AppColors.muted;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -280,7 +276,9 @@ class CategoryPill extends ConsumerWidget {
       child: Text(
         ref.watch(categorySetProvider(CategoryKind.todo)).label(category),
         style: TextStyle(
-          color: dimmed ? AppColors.textSecondary : ink,
+          color: dimmed
+              ? AppColors.textSecondary
+              : AppColors.onCategory(category),
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

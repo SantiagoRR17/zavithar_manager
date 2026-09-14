@@ -75,6 +75,30 @@ abstract final class AppTheme {
         space: 1,
         thickness: 1,
       ),
+      // **Selected segments take `brandPrimary`, not `brandPrimaryLight`.**
+      // Material's default maps the selected fill to `secondaryContainer`,
+      // which left white label text at 3.49:1 — below the 4.5:1 a 14px label
+      // needs, and visibly brighter than the navigation bar's own selected
+      // pill. `brandPrimary` measures 6.91:1 against white and is the same
+      // red the nav indicator and the primary button already use, so the
+      // "this one is selected" signal now looks the same everywhere.
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (Set<WidgetState> states) => states.contains(WidgetState.selected)
+                ? AppColors.brandPrimary
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (Set<WidgetState> states) => states.contains(WidgetState.selected)
+                ? AppColors.textPrimary
+                : AppColors.textSecondary,
+          ),
+          side: const WidgetStatePropertyAll<BorderSide>(
+            BorderSide(color: AppColors.gridline),
+          ),
+        ),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface2,
         indicatorColor: AppColors.brandPrimary,

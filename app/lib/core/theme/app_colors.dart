@@ -79,11 +79,20 @@ abstract final class AppColors {
     'home',
   ];
 
-  /// Gold is light enough that white text on it fails contrast. Anything
-  /// painted on a category colour asks this which text colour to use, rather
-  /// than assuming white.
-  static Color onCategory(String category) =>
-      category == 'study' ? page : textPrimary;
+  /// The ink to paint on a category colour.
+  ///
+  /// **Dark, on all four** — and measured, not guessed. The four category
+  /// colours are saturated mid-tones, and white on them ranges from 3.07:1
+  /// (gold) to 3.88:1 (orange): every one of them fails the 4.5:1 that an
+  /// 11px pill label needs, not just the gold that was obviously wrong by
+  /// eye. The page colour scores 5.00:1 to 6.33:1 on the same four.
+  ///
+  /// The colours themselves are untouched — the brand fixes those and they
+  /// are never reassigned. This changes only what is written on them.
+  ///
+  /// A category the brand has no colour for is drawn on [muted], which takes
+  /// the same dark ink at 5.41:1.
+  static Color onCategory(String category) => page;
 
   // --- Status -----------------------------------------------------------
   //
