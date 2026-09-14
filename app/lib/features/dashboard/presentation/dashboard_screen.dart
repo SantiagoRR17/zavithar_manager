@@ -9,6 +9,8 @@ import '../../finance/application/budget_providers.dart';
 import '../../finance/domain/budget.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/finance_summary.dart';
+import '../domain/spending_insights.dart';
+import 'widgets/spending_charts.dart';
 import 'widgets/stat_tile.dart';
 
 /// The landing screen after sign-in: the state of the money, at a glance.
@@ -116,6 +118,8 @@ class _DashboardBody extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 20),
+        const _Charts(),
       ],
     );
   }
@@ -258,6 +262,31 @@ class _NetRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The two charts, below the tiles.
+///
+/// On the dashboard rather than behind a tab because they answer the question
+/// the dashboard exists for — "how am I doing" — better than a grid of numbers
+/// does. Each hides itself when there is nothing to plot, so a new account sees
+/// tiles and no empty frames.
+class _Charts extends ConsumerWidget {
+  const _Charts();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<CategorySpend> categories = ref.watch(categorySpendProvider);
+    final List<MonthlyTotals> months = ref.watch(monthlyTotalsProvider);
+
+    return Column(
+      children: <Widget>[
+        if (categories.isNotEmpty) CategorySpendChart(rows: categories),
+        if (categories.isNotEmpty && months.length >= 2)
+          const SizedBox(height: 12),
+        if (months.length >= 2) MonthlyNetChart(series: months),
+      ],
     );
   }
 }

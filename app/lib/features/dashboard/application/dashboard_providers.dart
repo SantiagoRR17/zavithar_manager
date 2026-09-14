@@ -5,7 +5,9 @@ import '../../finance/application/transaction_providers.dart';
 import '../../finance/domain/finance_transaction.dart';
 import '../../finance/domain/liability.dart';
 import '../../finance/domain/savings_goal.dart';
+import '../../finance/domain/monthly_statement.dart';
 import '../domain/finance_summary.dart';
+import '../domain/spending_insights.dart';
 
 /// The dashboard's single source of truth, folded from the three finance
 /// streams the Finance tab already uses.
@@ -82,5 +84,34 @@ final Provider<AsyncValue<FinanceSummary>> financeSummaryProvider =
           // alarming possible way for a cost optimisation to go wrong.
           openingBalance: ref.watch(closedBalanceProvider),
         ),
+      );
+    });
+
+/// Spending per category for the current month, for the dashboard chart.
+///
+/// Folded from the transactions stream that already exists — no new listener,
+/// and no new reads.
+final Provider<List<CategorySpend>> categorySpendProvider =
+    Provider<List<CategorySpend>>((Ref ref) {
+      final List<FinanceTransaction> transactions =
+          ref.watch(transactionsStreamProvider).asData?.value ??
+          const <FinanceTransaction>[];
+      return SpendingInsights.byCategory(transactions);
+    });
+
+/// Income and expense per month.
+///
+/// Closed months come from their statements, which is the payoff of ADR 0012 in
+/// its clearest form: a year of history is a dozen documents instead of
+/// thousands of transactions, and the chart costs nothing extra to draw.
+final Provider<List<MonthlyTotals>> monthlyTotalsProvider =
+    Provider<List<MonthlyTotals>>((Ref ref) {
+      return SpendingInsights.byMonth(
+        statements:
+            ref.watch(statementsStreamProvider).asData?.value ??
+            const <MonthlyStatement>[],
+        openTransactions:
+            ref.watch(transactionsStreamProvider).asData?.value ??
+            const <FinanceTransaction>[],
       );
     });
